@@ -98,8 +98,8 @@ const CarCard = ({ car }: CarCardProps) => {
       const { error } = await supabase
         .from('cars')
         .delete()
-        .eq('id', car.id as any)
-        .eq('user_id', car.userId as any);
+        .eq('id', car.id)
+        .eq('user_id', user.id);
         
       if (error) throw error;
       
@@ -111,6 +111,9 @@ const CarCard = ({ car }: CarCardProps) => {
       // After successful deletion, you might want to redirect or refresh
       if (window.location.pathname.includes(`/car/${car.id}`)) {
         navigate('/');
+      } else if (window.location.pathname.includes('/dashboard')) {
+        // Force refresh the dashboard to show the updated list
+        window.location.reload();
       }
     } catch (error: any) {
       console.error("Error deleting car:", error);
