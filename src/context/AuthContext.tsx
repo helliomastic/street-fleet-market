@@ -22,41 +22,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setIsLoading(false);
+    let authListener: { data: { subscription: { unsubscribe: () => void } } };
+    let messageChannel: any = null;
 
+    // Set up auth state listener
+    const setupAuthListener = async () => {
+      // First check existing session
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+      
+      if (currentSession?.user) {
+        // Ensure user profile exists
+        await ensureUserProfileExists(currentSession.user);
+        checkIsAdmin(currentSession.user.id);
+        
+        // Set up message subscription only if logged in
+        setupMessageSubscription(currentSession.user.id);
+      }
+      
+      setIsLoading(false);
+      
+      // Then listen for changes
+      authListener = supabase.auth.onAuthStateChange(async (event, newSession) => {
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+        
         if (event === 'SIGNED_IN') {
           toast({
             title: 'Logged in',
             description: 'You have been logged in successfully',
           });
           
-          // Check if user is admin
-          if (session?.user) {
+          if (newSession?.user) {
             // Ensure user profile exists
-            await ensureUserProfileExists(session.user);
+            await ensureUserProfileExists(newSession.user);
+            checkIsAdmin(newSession.user.id);
             
-            checkIsAdmin(session.user.id);
-            
-            // Enable realtime subscriptions for messages after login
-            const channel = supabase
-              .channel('public:messages')
-              .on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'messages',
-                filter: `recipient_id=eq.${session.user.id}`
-              }, (payload) => {
-                toast({
-                  title: 'New Message',
-                  description: 'You have received a new message',
-                });
-              })
-              .subscribe();
+            // Set up message subscription
+            setupMessageSubscription(newSession.user.id);
           }
         } else if (event === 'SIGNED_OUT') {
           toast({
@@ -66,43 +70,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           setIsAdmin(false);
           
-          // Disable all realtime subscriptions
-          supabase.removeAllChannels();
+          // Clean up message subscription
+          if (messageChannel) {
+            supabase.removeChannel(messageChannel);
+            messageChannel = null;
+          }
         }
+      });
+    };
+    
+    const setupMessageSubscription = (userId: string) => {
+      // Remove existing subscription if any
+      if (messageChannel) {
+        supabase.removeChannel(messageChannel);
       }
-    );
-
-    // THEN check for existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsLoading(false);
       
-      // Check if user is admin and enable realtime for messages if logged in
-      if (session?.user) {
-        // Ensure user profile exists
-        await ensureUserProfileExists(session.user);
-        
-        checkIsAdmin(session.user.id);
-        
-        const channel = supabase
-          .channel('public:messages')
-          .on('postgres_changes', {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'messages',
-            filter: `recipient_id=eq.${session.user.id}`
-          }, (payload) => {
-            toast({
-              title: 'New Message',
-              description: 'You have received a new message',
-            });
-          })
-          .subscribe();
-      }
-    });
+      // Create new subscription
+      messageChannel = supabase
+        .channel(`messages:${userId}`)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `recipient_id=eq.${userId}`
+        }, (payload) => {
+          toast({
+            title: 'New Message',
+            description: 'You have received a new message',
+          });
+        })
+        .subscribe((status) => {
+          console.log('Message subscription status:', status);
+        });
+    };
+    
+    setupAuthListener();
 
-    return () => subscription.unsubscribe();
+    // Cleanup function
+    return () => {
+      if (authListener) authListener.data.subscription.unsubscribe();
+      if (messageChannel) supabase.removeChannel(messageChannel);
+    };
   }, [toast]);
 
   // Ensure user profile exists in the profiles table

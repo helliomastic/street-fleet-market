@@ -22,6 +22,7 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5 minutes
     },
   },
 });
@@ -30,14 +31,31 @@ const App = () => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    // Ensure resources are loaded before showing the app
-    window.addEventListener('load', () => setIsLoaded(true));
+    // Set to true immediately to prevent long loading screens
+    setIsLoaded(true);
+    
+    // Also listen for window load event as a fallback
+    const handleLoad = () => setIsLoaded(true);
+    window.addEventListener('load', handleLoad);
+    
     // If already loaded, set to true
     if (document.readyState === 'complete') {
       setIsLoaded(true);
     }
-    return () => window.removeEventListener('load', () => setIsLoaded(true));
+    
+    return () => window.removeEventListener('load', handleLoad);
   }, []);
+
+  if (!isLoaded) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-t-brand-blue border-gray-200 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-lg text-gray-600">Loading Street Fleet...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
