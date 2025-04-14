@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
@@ -16,104 +17,113 @@ const HomePage = () => {
   const listingsRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Fetch car listings from Supabase
-    const fetchListings = async () => {
-      try {
-        console.log("Fetching car listings...");
-        setLoading(true);
+  // Function to fetch car listings and profiles
+  const fetchListings = async () => {
+    try {
+      console.log("Fetching car listings...");
+      setLoading(true);
+      
+      // Fetch cars data first
+      const { data: carsData, error: carsError } = await supabase
+        .from('cars')
+        .select('*')
+        .order('created_at', { ascending: false });
         
-        // Fetch cars data first
-        const { data: carsData, error: carsError } = await supabase
-          .from('cars')
-          .select('*')
-          .order('created_at', { ascending: false });
-          
-        if (carsError) {
-          throw carsError;
-        }
-        
-        console.log("Fetched cars data:", carsData);
-        
-        // Create a map to store profile information for each user
-        const userProfiles: Record<string, any> = {};
-        
-        // Get unique user IDs
-        const userIds = [...new Set(carsData.map(car => car.user_id))];
-        
-        // If there are user IDs, fetch their profiles
-        if (userIds.length > 0) {
-          const { data: profilesData, error: profilesError } = await supabase
-            .from('profiles')
-            .select('id, full_name, username')
-            .in('id', userIds);
-            
-          if (profilesError) {
-            console.error("Error fetching profiles:", profilesError);
-          } else if (profilesData) {
-            // Create a map of user_id to profile data
-            profilesData.forEach(profile => {
-              userProfiles[profile.id] = profile;
-            });
-          }
-        }
-        
-        // Map the cars data to our CarListing type, including profile information
-        const formattedListings: CarListing[] = carsData.map(car => {
-          // Get profile data from our map, or use empty object if not found
-          const profile = userProfiles[car.user_id] || {};
-          
-          return {
-            id: car.id,
-            title: car.title,
-            make: car.make,
-            model: car.model,
-            year: car.year,
-            price: car.price,
-            description: car.description,
-            image: car.image_url,
-            location: "United States", // Default location
-            postedDate: new Date(car.created_at || new Date()),
-            userId: car.user_id,
-            condition: car.condition,
-            sellerName: profile.full_name || profile.username || 'Anonymous',
-            createdAt: new Date(car.created_at || new Date()),
-          };
-        });
-        
-        console.log("Formatted listings:", formattedListings);
-        setListings(formattedListings);
-        setFilteredListings(formattedListings);
-      } catch (error) {
-        console.error("Error fetching listings:", error);
-        toast({
-          variant: "destructive",
-          title: "Error loading listings",
-          description: "Could not load car listings. Please try again.",
-        });
-      } finally {
-        setLoading(false);
+      if (carsError) {
+        throw carsError;
       }
-    };
+      
+      console.log("Fetched cars data:", carsData);
+      
+      // Create a map to store profile information for each user
+      const userProfiles: Record<string, any> = {};
+      
+      // Get unique user IDs
+      const userIds = [...new Set(carsData.map(car => car.user_id))];
+      
+      // If there are user IDs, fetch their profiles
+      if (userIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, full_name, username')
+          .in('id', userIds);
+          
+        if (profilesError) {
+          console.error("Error fetching profiles:", profilesError);
+        } else if (profilesData) {
+          // Create a map of user_id to profile data
+          profilesData.forEach(profile => {
+            userProfiles[profile.id] = profile;
+          });
+        }
+      }
+      
+      // Map the cars data to our CarListing type, including profile information
+      const formattedListings: CarListing[] = carsData.map(car => {
+        // Get profile data from our map, or use empty object if not found
+        const profile = userProfiles[car.user_id] || {};
+        
+        return {
+          id: car.id,
+          title: car.title,
+          make: car.make,
+          model: car.model,
+          year: car.year,
+          price: car.price,
+          description: car.description,
+          image: car.image_url,
+          location: "United States", // Default location
+          postedDate: new Date(car.created_at || new Date()),
+          userId: car.user_id,
+          condition: car.condition,
+          sellerName: profile.full_name || profile.username || 'Anonymous',
+          createdAt: new Date(car.created_at || new Date()),
+        };
+      });
+      
+      console.log("Formatted listings:", formattedListings);
+      setListings(formattedListings);
+      setFilteredListings(formattedListings);
+    } catch (error) {
+      console.error("Error fetching listings:", error);
+      toast({
+        variant: "destructive",
+        title: "Error loading listings",
+        description: "Could not load car listings. Please try again.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
+    // Initial fetch
     fetchListings();
     
-    // Set up realtime subscription for changes to the cars table
+    // Improved real-time subscription for immediate updates
+    // Create a channel to listen for changes to the cars table
     const channel = supabase
-      .channel('cars-channel')
+      .channel('cars-changes')
       .on('postgres_changes', { 
-        event: '*', 
+        event: '*',  // Listen for all events (INSERT, UPDATE, DELETE)
         schema: 'public', 
         table: 'cars' 
       }, (payload) => {
-        console.log('Car listing changed!', payload);
-        // Refetch all listings when any change occurs
+        console.log('Real-time update received:', payload);
+        
+        // Immediately refetch all listings when any change occurs
         fetchListings();
       })
       .subscribe((status) => {
         console.log('Subscription status:', status);
         if (status !== 'SUBSCRIBED') {
           console.error('Failed to subscribe to car listings changes');
+          
+          // Attempt to reconnect in case of failure
+          setTimeout(() => {
+            console.log('Attempting to reconnect to real-time updates...');
+            channel.subscribe();
+          }, 3000);
         }
       });
       
