@@ -78,7 +78,23 @@ const CarCard = ({ car }: CarCardProps) => {
     try {
       setIsDeleting(true);
       
-      // Delete the car from the database
+      // First, delete all messages associated with this car
+      const { error: messagesError } = await supabase
+        .from('messages')
+        .delete()
+        .eq('car_id', car.id);
+        
+      if (messagesError) {
+        console.error("Error deleting related messages:", messagesError);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: messagesError.message || "Failed to delete related messages. Please try again.",
+        });
+        return;
+      }
+      
+      // After messages are deleted, delete the car
       const { error } = await supabase
         .from('cars')
         .delete()
