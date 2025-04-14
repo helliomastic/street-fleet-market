@@ -19,7 +19,7 @@ const HomePage = () => {
         // Fetch car listings from Supabase
         const { data, error } = await supabase
           .from('cars')
-          .select('*, profiles(full_name)')
+          .select('*, profiles(*)')
           .order('created_at', { ascending: false });
           
         if (error) {
@@ -27,7 +27,7 @@ const HomePage = () => {
         }
         
         // Convert the data to match our CarListing type
-        const formattedListings = data.map(car => ({
+        const formattedListings: CarListing[] = data.map(car => ({
           id: car.id,
           title: car.title,
           make: car.make,
@@ -41,6 +41,7 @@ const HomePage = () => {
           userId: car.user_id,
           condition: car.condition,
           sellerName: car.profiles?.full_name || 'Anonymous',
+          createdAt: car.created_at ? new Date(car.created_at) : new Date(),
         }));
         
         setListings(formattedListings);

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -84,8 +83,16 @@ const MODELS_BY_MAKE: Record<string, string[]> = {
 // Generate years from 1990 to current year
 const YEARS = Array.from({ length: new Date().getFullYear() - 1989 }, (_, i) => (1990 + i).toString());
 
-// Condition options
-const CONDITIONS = ["New", "Like New", "Excellent", "Good", "Fair", "Poor"];
+// Modified condition options to match the database constraint
+const CONDITIONS = ["new", "like_new", "excellent", "good", "fair", "poor"];
+const CONDITION_LABELS: Record<string, string> = {
+  "new": "New",
+  "like_new": "Like New",
+  "excellent": "Excellent",
+  "good": "Good",
+  "fair": "Fair",
+  "poor": "Poor"
+};
 
 const PostCarPage = () => {
   const { toast } = useToast();
@@ -239,7 +246,7 @@ const PostCarPage = () => {
         imageUrl = urlData.publicUrl;
       }
       
-      // Prepare car data
+      // Prepare car data - ensure condition value matches database constraints
       const carData = {
         title: values.title,
         make: values.make,
@@ -247,7 +254,7 @@ const PostCarPage = () => {
         year: parseInt(values.year),
         price: parseInt(values.price),
         description: values.description,
-        condition: values.condition,
+        condition: values.condition.toLowerCase(), // Ensure lowercase to match DB constraints
         user_id: user.id,
         image_url: imageUrl,
       };
@@ -446,7 +453,7 @@ const PostCarPage = () => {
                           <SelectContent>
                             {CONDITIONS.map((condition) => (
                               <SelectItem key={condition} value={condition}>
-                                {condition}
+                                {CONDITION_LABELS[condition]}
                               </SelectItem>
                             ))}
                           </SelectContent>
