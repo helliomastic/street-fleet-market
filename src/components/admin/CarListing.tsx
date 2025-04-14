@@ -5,6 +5,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { CarListItem } from "./CarListItem";
 import { CarEditForm } from "./CarEditForm";
 import { CarCreateForm } from "./CarCreateForm";
+import { Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export interface CarListing {
   id: string;
@@ -32,6 +45,8 @@ export const CarListingComponent = ({ cars, loadingCars, fetchCars }: CarListing
   
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  
+  const [deletingAll, setDeletingAll] = useState(false);
 
   const handleUpdateCar = async (id: string) => {
     if (!editingCar) return;
@@ -121,9 +136,95 @@ export const CarListingComponent = ({ cars, loadingCars, fetchCars }: CarListing
     }
   };
 
+  const handleDeleteAllCars = async () => {
+    try {
+      setDeletingAll(true);
+      
+      // First, delete all messages related to any car
+      const { error: messagesError } = await supabase
+        .from('messages')
+        .delete()
+        .neq('car_id', 'dummy_value'); // This will match all car_ids
+        
+      if (messagesError) {
+        console.error("Error deleting related messages:", messagesError);
+        toast({
+          title: "Error",
+          description: "Failed to delete related messages: " + messagesError.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Then delete all cars
+      const { error } = await supabase
+        .from('cars')
+        .delete()
+        .neq('id', 'dummy_value'); // This will match all car ids
+        
+      if (error) {
+        console.error("Error deleting all cars:", error);
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      fetchCars();
+      
+      toast({
+        title: "All Listings Deleted",
+        description: "All car listings have been successfully deleted",
+      });
+    } catch (error: any) {
+      console.error("Error deleting all cars:", error);
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
   return (
     <div className="bg-white shadow rounded-lg p-6">
-      <h2 className="text-xl font-semibold mb-4">Car Listings</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">Car Listings</h2>
+        
+        {cars.length > 0 && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm" className="flex items-center gap-1">
+                <Trash2 className="h-4 w-4" /> Delete All
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete All Listings</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete ALL car listings? This action cannot be undone
+                  and will remove all associated messages as well.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteAllCars}
+                  disabled={deletingAll}
+                  className="bg-red-500 hover:bg-red-600"
+                >
+                  {deletingAll ? "Deleting..." : "Delete All"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+      </div>
+      
       {loadingCars ? (
         <div className="animate-pulse space-y-4">
           <div className="h-20 bg-gray-200 rounded" />
@@ -131,14 +232,20 @@ export const CarListingComponent = ({ cars, loadingCars, fetchCars }: CarListing
         </div>
       ) : (
         <div className="space-y-4">
-          {cars.map((car) => (
-            <CarListItem 
-              key={car.id} 
-              car={car} 
-              onEdit={setEditingCar} 
-              fetchCars={fetchCars} 
-            />
-          ))}
+          {cars.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              No car listings available.
+            </div>
+          ) : (
+            cars.map((car) => (
+              <CarListItem 
+                key={car.id} 
+                car={car} 
+                onEdit={setEditingCar} 
+                fetchCars={fetchCars} 
+              />
+            ))
+          )}
         </div>
       )}
       
