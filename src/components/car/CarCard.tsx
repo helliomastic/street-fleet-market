@@ -18,7 +18,7 @@ export interface CarListing {
   userId: string;
   condition: string;
   sellerName: string;
-  createdAt: Date; // Add createdAt field to match database
+  createdAt: Date;
 }
 
 const CarCard = ({ car }: { car: CarListing }) => {
@@ -71,6 +71,7 @@ const CarCard = ({ car }: { car: CarListing }) => {
           <h3 className="font-bold text-lg mb-1 truncate">{car.title}</h3>
           <p className="text-sm text-gray-500 mb-2">{car.year} {car.make} {car.model}</p>
           <p className="text-xl font-bold text-brand-blue">{formattedPrice}</p>
+          <p className="text-xs text-gray-500 mt-1">Seller: {car.sellerName}</p>
         </CardContent>
         <CardFooter className="px-4 py-3 bg-gray-50 flex justify-between items-center text-sm text-gray-500">
           <span>{car.location}</span>

@@ -15,9 +15,17 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
     storage: localStorage
   },
+  db: {
+    schema: 'public'
+  },
   realtime: {
     params: {
       eventsPerSecond: 10
+    }
+  },
+  global: {
+    headers: {
+      'x-client-info': '@supabase/supabase-js/2.x'
     }
   }
 });
