@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Edit, Trash2 } from "lucide-react";
 import { 
@@ -45,6 +46,9 @@ export const CarListItem = ({ car, onEdit, fetchCars }: CarListItemProps) => {
       }
       
       console.log("Successfully deleted messages for car:", id);
+      
+      // Add a small delay to ensure database consistency
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // Now that messages are deleted, delete the car
       const { error } = await supabase

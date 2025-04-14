@@ -164,18 +164,26 @@ export const CarListingComponent = ({ cars, loadingCars, fetchCars }: CarListing
         return;
       }
       
-      // Delete messages for each car individually to ensure we don't miss any
-      for (const car of carIds) {
-        const { error: messagesError } = await supabase
-          .from('messages')
-          .delete()
-          .eq('car_id', car.id);
-          
-        if (messagesError) {
-          console.error(`Error deleting messages for car ${car.id}:`, messagesError);
-          // Continue to next car even if this one fails
-        }
+      // First, delete ALL messages in the messages table
+      const { error: allMessagesError } = await supabase
+        .from('messages')
+        .delete()
+        .gte('car_id', ''); // This condition will match all messages
+        
+      if (allMessagesError) {
+        console.error("Error deleting all messages:", allMessagesError);
+        toast({
+          title: "Error",
+          description: "Failed to delete all messages: " + allMessagesError.message,
+          variant: "destructive",
+        });
+        return;
       }
+      
+      console.log("Successfully deleted all messages");
+      
+      // Add a small delay to ensure database consistency
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Now that all messages are deleted, delete all cars
       const { error } = await supabase
