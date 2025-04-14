@@ -6,6 +6,7 @@ import { Calendar, DollarSign, MapPin, User, Mail, Phone, ArrowLeft, Share2 } fr
 import Layout from "@/components/layout/Layout";
 import { CarListing } from "@/components/car/CarCard";
 import { mockListings, mockUsers } from "@/utils/mockData";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -13,27 +14,117 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/use-toast";
 
 const CarDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
   const [car, setCar] = useState<CarListing | null>(null);
   const [loading, setLoading] = useState(true);
   const [seller, setSeller] = useState<any>(null);
+  const [similarCars, setSimilarCars] = useState<CarListing[]>([]);
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactMessage, setContactMessage] = useState("");
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   useEffect(() => {
-    // In a real app, this would fetch from Supabase
     const fetchCarDetails = async () => {
       try {
         setLoading(true);
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 800));
         
-        const carData = mockListings.find(car => car.id === id);
-        if (carData) {
-          setCar(carData);
-          // Find the seller
-          const userData = mockUsers.find(user => user.id === carData.userId);
-          setSeller(userData);
+        if (!id) return;
+        
+        // Fetch car from Supabase
+        const { data: carData, error: carError } = await supabase
+          .from('cars')
+          .select('*')
+          .eq('id', id)
+          .single();
+          
+        if (carError) {
+          console.error("Error fetching car:", carError);
+          return;
+        }
+        
+        if (!carData) {
+          return;
+        }
+        
+        // Convert to CarListing format
+        const formattedCar: CarListing = {
+          id: carData.id,
+          title: carData.title,
+          make: carData.make,
+          model: carData.model,
+          year: carData.year,
+          price: carData.price,
+          description: carData.description,
+          image: carData.image_url,
+          location: "United States", // Default location
+          postedDate: new Date(carData.created_at || new Date()),
+          userId: carData.user_id,
+          condition: carData.condition,
+          sellerName: 'Anonymous', // Default seller name
+          createdAt: new Date(carData.created_at || new Date()),
+        };
+        
+        setCar(formattedCar);
+        
+        // Fetch seller profile
+        if (carData.user_id) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', carData.user_id)
+            .single();
+            
+          if (profileData) {
+            setSeller({
+              id: profileData.id,
+              name: profileData.full_name || 'Anonymous',
+              email: 'contact@example.com', // For privacy, we don't show actual email
+            });
+          }
+        }
+        
+        // Fetch similar cars (same make)
+        const { data: similarCarsData } = await supabase
+          .from('cars')
+          .select('*')
+          .eq('make', carData.make)
+          .neq('id', id)
+          .limit(3);
+          
+        if (similarCarsData) {
+          const formattedSimilarCars: CarListing[] = similarCarsData.map(car => ({
+            id: car.id,
+            title: car.title,
+            make: car.make,
+            model: car.model,
+            year: car.year,
+            price: car.price,
+            description: car.description,
+            image: car.image_url,
+            location: "United States",
+            postedDate: new Date(car.created_at || new Date()),
+            userId: car.user_id,
+            condition: car.condition,
+            sellerName: 'Anonymous',
+            createdAt: new Date(car.created_at || new Date()),
+          }));
+          setSimilarCars(formattedSimilarCars);
         }
       } catch (error) {
         console.error("Error fetching car details:", error);
@@ -46,6 +137,29 @@ const CarDetailsPage = () => {
       fetchCarDetails();
     }
   }, [id]);
+
+  const handleContactSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSendingMessage(true);
+    
+    // Simulate sending a message
+    setTimeout(() => {
+      setSendingMessage(false);
+      toast({
+        title: "Message Sent!",
+        description: "Your message has been sent to the seller.",
+        duration: 5000,
+      });
+      setContactName("");
+      setContactEmail("");
+      setContactPhone("");
+      setContactMessage("");
+      
+      // Close the dialog programmatically
+      const closeButton = document.querySelector('[data-dialog-close]') as HTMLButtonElement;
+      if (closeButton) closeButton.click();
+    }, 1000);
+  };
 
   if (loading) {
     return (
@@ -178,16 +292,16 @@ const CarDetailsPage = () => {
                     <p className="font-medium">{car.year}</p>
                   </div>
                   <div>
+                    <p className="text-gray-500 text-sm">Condition</p>
+                    <p className="font-medium">{car.condition.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
+                  </div>
+                  <div>
                     <p className="text-gray-500 text-sm">Body Style</p>
                     <p className="font-medium">Sedan</p>
                   </div>
                   <div>
                     <p className="text-gray-500 text-sm">Transmission</p>
                     <p className="font-medium">Automatic</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500 text-sm">Fuel Type</p>
-                    <p className="font-medium">Gasoline</p>
                   </div>
                 </div>
 
@@ -231,9 +345,82 @@ const CarDetailsPage = () => {
                     <span>(555) 123-4567</span>
                   </div>
                 </div>
-                <Button className="w-full bg-brand-orange hover:bg-opacity-90 mb-3">
-                  Contact Seller
-                </Button>
+                
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button className="w-full bg-brand-orange hover:bg-opacity-90 mb-3">
+                      Contact Seller
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Contact Seller</DialogTitle>
+                      <DialogDescription>
+                        Send a message to the seller about {car.title}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleContactSubmit} className="space-y-4">
+                      <div>
+                        <label htmlFor="name" className="block text-sm font-medium mb-1">
+                          Your Name
+                        </label>
+                        <Input 
+                          id="name" 
+                          value={contactName} 
+                          onChange={(e) => setContactName(e.target.value)} 
+                          placeholder="John Doe" 
+                          required 
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="email" className="block text-sm font-medium mb-1">
+                          Your Email
+                        </label>
+                        <Input 
+                          id="email" 
+                          type="email" 
+                          value={contactEmail} 
+                          onChange={(e) => setContactEmail(e.target.value)} 
+                          placeholder="john@example.com" 
+                          required 
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="phone" className="block text-sm font-medium mb-1">
+                          Your Phone Number
+                        </label>
+                        <Input 
+                          id="phone" 
+                          value={contactPhone} 
+                          onChange={(e) => setContactPhone(e.target.value)} 
+                          placeholder="(555) 123-4567" 
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="message" className="block text-sm font-medium mb-1">
+                          Message
+                        </label>
+                        <Textarea 
+                          id="message" 
+                          value={contactMessage} 
+                          onChange={(e) => setContactMessage(e.target.value)} 
+                          placeholder="I'm interested in this car. Is it still available?" 
+                          rows={4} 
+                          required 
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <DialogClose asChild>
+                          <Button type="button" variant="outline">Cancel</Button>
+                        </DialogClose>
+                        <Button type="submit" disabled={sendingMessage}>
+                          {sendingMessage ? 'Sending...' : 'Send Message'}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+                
                 <Button variant="outline" className="w-full">
                   <Share2 className="h-4 w-4 mr-2" />
                   Share Listing
@@ -257,16 +444,14 @@ const CarDetailsPage = () => {
           <div className="mt-8">
             <h2 className="text-2xl font-bold mb-6">Similar Vehicles</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              {mockListings
-                .filter(listing => listing.id !== car.id && listing.make === car.make)
-                .slice(0, 3)
-                .map(car => (
-                  <div key={car.id} className="car-card">
+              {similarCars.length > 0 ? (
+                similarCars.map(similarCar => (
+                  <div key={similarCar.id} className="car-card">
                     <div className="relative">
-                      {car.image ? (
+                      {similarCar.image ? (
                         <img
-                          src={car.image}
-                          alt={`${car.make} ${car.model}`}
+                          src={similarCar.image}
+                          alt={`${similarCar.make} ${similarCar.model}`}
                           className="car-card-img"
                         />
                       ) : (
@@ -274,13 +459,13 @@ const CarDetailsPage = () => {
                       )}
                     </div>
                     <div className="p-4">
-                      <h3 className="font-bold text-lg mb-1 truncate">{car.title}</h3>
+                      <h3 className="font-bold text-lg mb-1 truncate">{similarCar.title}</h3>
                       <div className="flex justify-between items-center mt-4">
                         <div className="text-xl font-bold text-brand-blue">
-                          ${car.price.toLocaleString()}
+                          ${similarCar.price.toLocaleString()}
                         </div>
                         <Link
-                          to={`/car/${car.id}`}
+                          to={`/car/${similarCar.id}`}
                           className="px-4 py-2 bg-brand-orange text-white rounded hover:bg-opacity-90 transition-colors"
                         >
                           View Details
@@ -288,7 +473,12 @@ const CarDetailsPage = () => {
                       </div>
                     </div>
                   </div>
-                ))}
+                ))
+              ) : (
+                <div className="col-span-3 text-center py-8 text-gray-500">
+                  No similar vehicles found
+                </div>
+              )}
             </div>
           </div>
         </div>
