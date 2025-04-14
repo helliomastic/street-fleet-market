@@ -1,42 +1,52 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import Layout from "@/components/layout/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger 
+} from "@/components/ui/dialog";
+import { 
+  Form, 
+  FormControl, 
+  FormField, 
+  FormItem, 
+  FormLabel, 
+  FormMessage 
+} from "@/components/ui/form";
 import { useToast } from "@/components/ui/use-toast";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Car, Users, ShieldAlert, DollarSign, Edit, Trash, PlusCircle } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import { BarChart, LineChart, ResponsiveContainer, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Line } from "recharts";
-import { Car, Users, ShieldAlert, DollarSign, Edit, MoreHorizontal, Trash, Search, Lock, Shield } from "lucide-react";
-import { mockListings, mockUsers } from "@/utils/mockData";
-import { CarListing } from "@/components/car/CarCard";
+
+// Validation schema for car listing
+const carListingSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  make: z.string().min(1, "Make is required"),
+  model: z.string().min(1, "Model is required"),
+  year: z.coerce.number().min(1900, "Invalid year"),
+  price: z.coerce.number().min(0, "Price must be positive"),
+  description: z.string().optional(),
+  condition: z.string().optional(),
+});
 
 // Mock stats data
 const MOCK_STATS = {
@@ -67,100 +77,237 @@ const MOCK_MONTHLY_DATA = [
 const AdminPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [listings, setListings] = useState<CarListing[]>([]);
-  const [users, setUsers] = useState(mockUsers);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filteredListings, setFilteredListings] = useState<CarListing[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState(users);
-  const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(true); // For demo, we'll assume admin access
+  const { user } = useAuth();
+  const [cars, setCars] = useState<any[]>([]);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedCar, setSelectedCar] = useState<any>(null);
 
+  // Form for adding/editing car
+  const form = useForm<z.infer<typeof carListingSchema>>({
+    resolver: zodResolver(carListingSchema),
+    defaultValues: {
+      title: "",
+      make: "",
+      model: "",
+      year: undefined,
+      price: undefined,
+      description: "",
+      condition: "",
+    },
+  });
+
+  // Fetch cars on component mount
   useEffect(() => {
-    // In a real app, this would check for admin permissions first
-    if (!isAdmin) {
-      navigate("/");
+    fetchCars();
+  }, [user]);
+
+  // Fetch cars from Supabase
+  const fetchCars = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('cars')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setCars(data || []);
+    } catch (error) {
       toast({
+        title: "Error",
+        description: "Failed to fetch cars",
         variant: "destructive",
-        title: "Access Denied",
-        description: "You don't have permission to view the admin panel.",
       });
-      return;
     }
+  };
 
-    // Fetch listings and users data
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 800));
-        setListings(mockListings);
-        setFilteredListings(mockListings);
-      } catch (error) {
-        console.error("Error fetching admin data:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to load admin data. Please try again.",
-        });
-      } finally {
-        setLoading(false);
+  // Handle car form submission
+  const onSubmit = async (values: z.infer<typeof carListingSchema>) => {
+    try {
+      if (selectedCar) {
+        // Update existing car
+        const { error } = await supabase
+          .from('cars')
+          .update({
+            ...values,
+            user_id: user?.id,
+          })
+          .eq('id', selectedCar.id);
+
+        if (error) throw error;
+        toast({ title: "Car Updated", description: "Car listing updated successfully" });
+      } else {
+        // Add new car
+        const { error } = await supabase
+          .from('cars')
+          .insert({
+            ...values,
+            user_id: user?.id,
+          });
+
+        if (error) throw error;
+        toast({ title: "Car Added", description: "New car listing added successfully" });
       }
-    };
 
-    fetchData();
-  }, [isAdmin, navigate, toast]);
-
-  // Filter listings based on search term
-  useEffect(() => {
-    if (searchTerm) {
-      const filtered = listings.filter(
-        listing =>
-          listing.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          listing.make.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          listing.model.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredListings(filtered);
-
-      const filteredUsers = users.filter(
-        user =>
-          user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          user.email.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredUsers(filteredUsers);
-    } else {
-      setFilteredListings(listings);
-      setFilteredUsers(users);
+      // Reset form and close dialog
+      form.reset();
+      setIsAddDialogOpen(false);
+      setSelectedCar(null);
+      fetchCars(); // Refresh car list
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save car listing",
+        variant: "destructive",
+      });
     }
-  }, [searchTerm, listings, users]);
-
-  const handleDeleteListing = (id: string) => {
-    // In a real app, this would delete from Supabase
-    setListings(listings.filter(listing => listing.id !== id));
-    setFilteredListings(filteredListings.filter(listing => listing.id !== id));
-    toast({
-      title: "Listing deleted",
-      description: "The listing has been successfully deleted.",
-    });
   };
 
-  const toggleUserAdminStatus = (userId: string) => {
-    // Update user's admin status
-    const updatedUsers = users.map(user => 
-      user.id === userId ? { ...user, isAdmin: !user.isAdmin } : user
-    );
-    setUsers(updatedUsers);
-    setFilteredUsers(
-      filteredUsers.map(user => 
-        user.id === userId ? { ...user, isAdmin: !user.isAdmin } : user
-      )
-    );
-    
-    const user = users.find(u => u.id === userId);
-    toast({
-      title: `${user?.isAdmin ? "Removed" : "Granted"} admin access`,
-      description: `Admin privileges have been ${user?.isAdmin ? "removed from" : "granted to"} ${user?.name}.`,
-    });
+  // Delete a car listing
+  const handleDeleteCar = async (carId: string) => {
+    try {
+      const { error } = await supabase
+        .from('cars')
+        .delete()
+        .eq('id', carId);
+
+      if (error) throw error;
+      
+      toast({ 
+        title: "Car Deleted", 
+        description: "Car listing removed successfully" 
+      });
+      
+      fetchCars(); // Refresh car list
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete car listing",
+        variant: "destructive",
+      });
+    }
   };
+
+  // Edit a car listing
+  const handleEditCar = (car: any) => {
+    setSelectedCar(car);
+    form.reset(car);
+    setIsAddDialogOpen(true);
+  };
+
+  // Render car form dialog
+  const renderCarForm = () => (
+    <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            {selectedCar ? "Edit Car Listing" : "Add New Car Listing"}
+          </DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Title</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Car Title" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="make"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Make</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Car Make" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="model"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Model</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Car Model" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="year"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Year</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="Year" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Price</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="Price" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="condition"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Condition</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Car Condition" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Car Description" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit">
+              {selectedCar ? "Update Listing" : "Add Listing"}
+            </Button>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
 
   return (
     <Layout>
@@ -231,7 +378,8 @@ const AdminPage = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {users.filter(user => user.isAdmin).length}
+                {/* users.filter(user => user.isAdmin).length */}
+                0
               </div>
               <p className="text-xs text-muted-foreground">
                 With full administrative access
@@ -296,198 +444,66 @@ const AdminPage = () => {
           </Card>
         </div>
 
-        {/* Management Tabs */}
-        <div className="space-y-6">
+        {/* Cars Management Section */}
+        <div className="space-y-6 mt-8">
           <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold">Manage Platform</h2>
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Search..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <h2 className="text-2xl font-bold">Manage Car Listings</h2>
+            <Button 
+              onClick={() => {
+                setSelectedCar(null);
+                setIsAddDialogOpen(true);
+              }}
+              className="flex items-center gap-2"
+            >
+              <PlusCircle className="h-4 w-4" /> Add New Car
+            </Button>
           </div>
 
-          <Tabs defaultValue="listings">
-            <TabsList className="mb-6">
-              <TabsTrigger value="listings">
-                <Car className="h-4 w-4 mr-2" />
-                Car Listings
-              </TabsTrigger>
-              <TabsTrigger value="users">
-                <Users className="h-4 w-4 mr-2" />
-                Users
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="listings">
-              {loading ? (
-                <div className="flex items-center justify-center p-8">
-                  <div className="animate-spin h-8 w-8 border-4 border-brand-blue border-opacity-50 border-t-brand-blue rounded-full"></div>
-                </div>
-              ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Title</TableHead>
-                        <TableHead>Year</TableHead>
-                        <TableHead>Make/Model</TableHead>
-                        <TableHead>Price</TableHead>
-                        <TableHead>Seller</TableHead>
-                        <TableHead className="w-24">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredListings.length > 0 ? (
-                        filteredListings.map((listing) => {
-                          const user = mockUsers.find(u => u.id === listing.userId);
-                          return (
-                            <TableRow key={listing.id}>
-                              <TableCell className="font-medium">{listing.title}</TableCell>
-                              <TableCell>{listing.year}</TableCell>
-                              <TableCell>{listing.make} {listing.model}</TableCell>
-                              <TableCell>${listing.price.toLocaleString()}</TableCell>
-                              <TableCell>{user?.name || "Unknown"}</TableCell>
-                              <TableCell>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="h-8 w-8 p-0">
-                                      <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                    <DropdownMenuItem>
-                                      <Edit className="h-4 w-4 mr-2" />
-                                      Edit
-                                    </DropdownMenuItem>
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild>
-                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                          <Trash className="h-4 w-4 mr-2" />
-                                          Delete
-                                        </DropdownMenuItem>
-                                      </AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle>Delete Listing</AlertDialogTitle>
-                                          <AlertDialogDescription>
-                                            Are you sure you want to delete this listing? This action cannot be undone.
-                                          </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                          <AlertDialogAction 
-                                            onClick={() => handleDeleteListing(listing.id)}
-                                            className="bg-red-500 hover:bg-red-600"
-                                          >
-                                            Delete
-                                          </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8">
-                            No listings found
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="users">
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Listings</TableHead>
-                      <TableHead className="w-24">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredUsers.length > 0 ? (
-                      filteredUsers.map((user) => {
-                        const userListings = mockListings.filter(listing => listing.userId === user.id);
-                        return (
-                          <TableRow key={user.id}>
-                            <TableCell className="font-medium">{user.name}</TableCell>
-                            <TableCell>{user.email}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center">
-                                {user.isAdmin ? (
-                                  <div className="flex items-center">
-                                    <Shield className="h-4 w-4 text-brand-orange mr-2" />
-                                    <span className="font-medium">Admin</span>
-                                  </div>
-                                ) : (
-                                  <span>User</span>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>{userListings.length}</TableCell>
-                            <TableCell>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" className="h-8 w-8 p-0">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                  <DropdownMenuItem onClick={() => toggleUserAdminStatus(user.id)}>
-                                    {user.isAdmin ? (
-                                      <>
-                                        <Lock className="h-4 w-4 mr-2" />
-                                        Remove Admin
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Shield className="h-4 w-4 mr-2" />
-                                        Make Admin
-                                      </>
-                                    )}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    <Trash className="h-4 w-4 mr-2" />
-                                    Delete User
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8">
-                          No users found
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
-          </Tabs>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Make/Model</TableHead>
+                  <TableHead>Year</TableHead>
+                  <TableHead>Price</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {cars.map((car) => (
+                  <TableRow key={car.id}>
+                    <TableCell>{car.title}</TableCell>
+                    <TableCell>{car.make} {car.model}</TableCell>
+                    <TableCell>{car.year}</TableCell>
+                    <TableCell>${car.price.toLocaleString()}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleEditCar(car)}
+                        >
+                          <Edit className="h-4 w-4 mr-2" /> Edit
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => handleDeleteCar(car.id)}
+                        >
+                          <Trash className="h-4 w-4 mr-2" /> Delete
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
+
+        {/* Render car form dialog */}
+        {renderCarForm()}
       </div>
     </Layout>
   );

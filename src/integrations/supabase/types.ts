@@ -94,6 +94,7 @@ export type Database = {
           avatar_url: string | null
           full_name: string | null
           id: string
+          is_admin: boolean | null
           role: string
           updated_at: string | null
           username: string | null
@@ -102,6 +103,7 @@ export type Database = {
           avatar_url?: string | null
           full_name?: string | null
           id: string
+          is_admin?: boolean | null
           role?: string
           updated_at?: string | null
           username?: string | null
@@ -110,6 +112,7 @@ export type Database = {
           avatar_url?: string | null
           full_name?: string | null
           id?: string
+          is_admin?: boolean | null
           role?: string
           updated_at?: string | null
           username?: string | null
@@ -121,7 +124,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
