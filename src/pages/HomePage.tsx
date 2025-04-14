@@ -90,7 +90,7 @@ const HomePage = () => {
     
     // Set up realtime subscription for changes to the cars table
     const channel = supabase
-      .channel('public:cars')
+      .channel('cars-channel')
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
