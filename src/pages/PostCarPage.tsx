@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -83,7 +84,7 @@ const MODELS_BY_MAKE: Record<string, string[]> = {
 // Generate years from 1990 to current year
 const YEARS = Array.from({ length: new Date().getFullYear() - 1989 }, (_, i) => (1990 + i).toString());
 
-// Modified condition options to match the database constraint
+// Define condition values to match the database constraint
 const CONDITIONS = ["new", "like_new", "excellent", "good", "fair", "poor"];
 const CONDITION_LABELS: Record<string, string> = {
   "new": "New",
@@ -115,7 +116,7 @@ const PostCarPage = () => {
       year: new Date().getFullYear().toString(),
       price: "",
       description: "",
-      condition: "Good",
+      condition: "good",
     },
   });
 
@@ -247,6 +248,7 @@ const PostCarPage = () => {
       }
       
       // Prepare car data - ensure condition value matches database constraints
+      // The condition is already in lowercase from the Select component
       const carData = {
         title: values.title,
         make: values.make,
@@ -254,10 +256,12 @@ const PostCarPage = () => {
         year: parseInt(values.year),
         price: parseInt(values.price),
         description: values.description,
-        condition: values.condition.toLowerCase(), // Ensure lowercase to match DB constraints
+        condition: values.condition, // Already in the correct format
         user_id: user.id,
         image_url: imageUrl,
       };
+      
+      console.log("Submitting car data:", carData); // Debugging log
       
       let result;
       
