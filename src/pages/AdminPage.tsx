@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
@@ -30,7 +29,6 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Car, Users, MessageSquare, Trash2, Edit } from "lucide-react";
 
-// Define the state for the car listings, users, and settings
 interface CarListing {
   id: string;
   title: string;
@@ -52,7 +50,6 @@ interface UserProfile {
   is_admin?: boolean;
 }
 
-// Main component
 const AdminPage = () => {
   const { user, isAdmin, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -63,12 +60,10 @@ const AdminPage = () => {
   const [loadingCars, setLoadingCars] = useState(true);
   const [loadingUsers, setLoadingUsers] = useState(true);
   
-  // Car editing state
   const [editingCar, setEditingCar] = useState<CarListing | null>(null);
   const [updating, setUpdating] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   
-  // New car state
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [newCar, setNewCar] = useState({
@@ -81,7 +76,6 @@ const AdminPage = () => {
     description: ''
   });
 
-  // Reset car form function
   const resetCarForm = () => {
     setNewCar({
       title: '',
@@ -94,7 +88,6 @@ const AdminPage = () => {
     });
   };
 
-  // Handler for updating a car listing
   const handleUpdateCar = async (id: string) => {
     if (!editingCar) return;
     
@@ -122,10 +115,8 @@ const AdminPage = () => {
         return;
       }
       
-      // Refresh the cars list
       fetchCars();
       
-      // Close the edit form
       setEditingCar(null);
       
       toast({
@@ -139,7 +130,6 @@ const AdminPage = () => {
     }
   };
 
-  // Handler for creating a new car listing
   const handleCreateCar = async () => {
     if (!user) return;
     
@@ -161,10 +151,8 @@ const AdminPage = () => {
         return;
       }
       
-      // Refresh the cars list
       fetchCars();
       
-      // Reset the form
       resetCarForm();
       
       toast({
@@ -178,32 +166,51 @@ const AdminPage = () => {
     }
   };
 
-  // Handler for deleting a car listing
   const handleDeleteCar = async (id: string) => {
     try {
-      // First, delete all messages associated with this car
-      const { error: messagesError } = await supabase
+      const { data: messageCheck, error: checkError } = await supabase
         .from('messages')
-        .delete()
+        .select('id')
         .eq('car_id', id);
         
-      if (messagesError) {
-        console.error("Error deleting related messages:", messagesError);
+      if (checkError) {
+        console.error("Error checking for messages:", checkError);
         toast({
           title: "Error",
-          description: messagesError.message,
+          description: "Failed to check for messages: " + checkError.message,
           variant: "destructive",
         });
         return;
       }
       
-      // Then delete the car
+      console.log(`Found ${messageCheck?.length || 0} messages to delete for car ${id}`);
+      
+      if (messageCheck && messageCheck.length > 0) {
+        const { error: messagesError } = await supabase
+          .from('messages')
+          .delete()
+          .eq('car_id', id);
+          
+        if (messagesError) {
+          console.error("Error deleting related messages:", messagesError);
+          toast({
+            title: "Error",
+            description: "Failed to delete related messages: " + messagesError.message,
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        console.log("Successfully deleted messages for car:", id);
+      }
+      
       const { error } = await supabase
         .from('cars')
         .delete()
         .eq('id', id);
         
       if (error) {
+        console.error("Error deleting car:", error);
         toast({
           title: "Error",
           description: error.message,
@@ -212,7 +219,6 @@ const AdminPage = () => {
         return;
       }
       
-      // Refresh the cars list
       fetchCars();
       
       toast({
@@ -220,6 +226,7 @@ const AdminPage = () => {
         description: "The car listing has been deleted successfully",
       });
     } catch (error: any) {
+      console.error("Error deleting car:", error);
       toast({
         title: "Error",
         description: error.message,
@@ -228,7 +235,6 @@ const AdminPage = () => {
     }
   };
 
-  // Fetch car listings from Supabase
   const fetchCars = async () => {
     setLoadingCars(true);
     try {
@@ -258,7 +264,6 @@ const AdminPage = () => {
     }
   };
 
-  // Fetch user profiles from Supabase
   const fetchUsers = async () => {
     setLoadingUsers(true);
     try {
@@ -425,7 +430,6 @@ const AdminPage = () => {
                   </div>
                 )}
                 
-                {/* Car Edit Form */}
                 {editingCar && (
                   <Card className="mt-6">
                     <CardHeader>
@@ -566,7 +570,6 @@ const AdminPage = () => {
                   </Card>
                 )}
                 
-                {/* Car Creation Form */}
                 <Card className="mt-6">
                   <CardHeader>
                     <CardTitle>Create New Car Listing</CardTitle>

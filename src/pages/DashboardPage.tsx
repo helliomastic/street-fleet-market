@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
@@ -32,7 +31,6 @@ const DashboardPage = () => {
   const [deletingCarId, setDeletingCarId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Redirect if not logged in and done loading
     if (!isLoading && !user) {
       navigate("/auth?tab=login");
     } else if (user) {
@@ -82,34 +80,72 @@ const DashboardPage = () => {
       setCarsLoading(false);
     }
   };
-  
+
   const handleDeleteCar = async (carId: string) => {
     if (!user) return;
     
     try {
       setDeletingCarId(carId);
       
-      // First, delete all messages associated with this car
-      const { error: messagesError } = await supabase
+      console.log("Deleting car with ID:", carId);
+      
+      const { data: messageCheck, error: checkError } = await supabase
         .from('messages')
-        .delete()
+        .select('id')
         .eq('car_id', carId);
         
-      if (messagesError) {
-        console.error("Error deleting related messages:", messagesError);
-        throw messagesError;
+      if (checkError) {
+        console.error("Error checking for messages:", checkError);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to check for messages: " + checkError.message
+        });
+        setDeletingCarId(null);
+        return;
       }
       
-      // Then delete the car
+      console.log(`Found ${messageCheck?.length || 0} messages to delete for car ${carId}`);
+      
+      if (messageCheck && messageCheck.length > 0) {
+        const { error: messagesError } = await supabase
+          .from('messages')
+          .delete()
+          .eq('car_id', carId);
+          
+        if (messagesError) {
+          console.error("Error deleting related messages:", messagesError);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to delete related messages: " + messagesError.message
+          });
+          setDeletingCarId(null);
+          return;
+        }
+        
+        console.log("Successfully deleted messages for car:", carId);
+      }
+      
       const { error } = await supabase
         .from('cars')
         .delete()
         .eq('id', carId)
         .eq('user_id', user.id);
         
-      if (error) throw error;
+      if (error) {
+        console.error("Error deleting car:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to delete car: " + error.message
+        });
+        setDeletingCarId(null);
+        return;
+      }
       
-      // Update the local state to remove the deleted car
+      console.log("Car successfully deleted");
+      
       setUserCars(prevCars => prevCars.filter(car => car.id !== carId));
       
       toast({
@@ -128,7 +164,6 @@ const DashboardPage = () => {
     }
   };
 
-  // Check for unread messages
   const [unreadCount, setUnreadCount] = useState(0);
   
   useEffect(() => {
@@ -154,7 +189,6 @@ const DashboardPage = () => {
     
     fetchUnreadMessages();
     
-    // Set up subscription for new messages
     const channel = supabase
       .channel('public:messages')
       .on('postgres_changes', { 
@@ -163,7 +197,6 @@ const DashboardPage = () => {
         table: 'messages',
         filter: `recipient_id=eq.${user?.id}`
       }, (payload) => {
-        // Update unread count when a new message is received
         setUnreadCount(prev => prev + 1);
       })
       .subscribe();
@@ -315,7 +348,6 @@ const DashboardPage = () => {
             </TabsContent>
 
             <TabsContent value="profile">
-              {/* Profile info - can be expanded in a future task */}
               <div className="bg-white shadow rounded-lg p-6">
                 <h2 className="text-xl font-semibold mb-4">My Profile</h2>
                 {profileLoading ? (
