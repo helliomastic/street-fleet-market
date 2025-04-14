@@ -50,7 +50,7 @@ const CarDetailsPage = () => {
         const { data: carData, error: carError } = await supabase
           .from('cars')
           .select('*')
-          .eq('id', id)
+          .eq('id', id as any)
           .single();
           
         if (carError) {
@@ -173,7 +173,7 @@ const CarDetailsPage = () => {
     setSendingMessage(true);
     
     try {
-      // Insert message into database
+      // Insert message into database with all required fields
       const { error } = await supabase
         .from('messages')
         .insert({
@@ -181,7 +181,8 @@ const CarDetailsPage = () => {
           sender_id: user.id,
           recipient_id: seller.id,
           message: contactMessage,
-        });
+          read: false // Make sure to include all required fields
+        } as any);
 
       if (error) {
         console.error("Error sending message:", error);

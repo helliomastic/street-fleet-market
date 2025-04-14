@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,7 +38,6 @@ import { Car, Users, ShieldAlert, DollarSign, Edit, Trash, PlusCircle } from "lu
 import { useAuth } from "@/context/AuthContext";
 import { BarChart, LineChart, ResponsiveContainer, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Line } from "recharts";
 
-// Validation schema for car listing - updated to match database requirements
 const carListingSchema = z.object({
   title: z.string().min(1, "Title is required"),
   make: z.string().min(1, "Make is required"),
@@ -50,10 +48,8 @@ const carListingSchema = z.object({
   condition: z.string().min(1, "Condition is required"),
 });
 
-// Type for form values
 type CarFormValues = z.infer<typeof carListingSchema>;
 
-// Mock stats data
 const MOCK_STATS = {
   totalUsers: 387,
   totalListings: 1432,
@@ -63,7 +59,6 @@ const MOCK_STATS = {
   revenue: 8750,
 };
 
-// Mock analytics data
 const MOCK_MONTHLY_DATA = [
   { name: "Jan", listings: 65, users: 24, revenue: 3200 },
   { name: "Feb", listings: 78, users: 28, revenue: 3800 },
@@ -86,8 +81,8 @@ const AdminPage = () => {
   const [cars, setCars] = useState<any[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedCar, setSelectedCar] = useState<any>(null);
+  const [adminUserId, setAdminUserId] = useState<string | null>(null);
 
-  // Form for adding/editing car
   const form = useForm<CarFormValues>({
     resolver: zodResolver(carListingSchema),
     defaultValues: {
@@ -101,12 +96,10 @@ const AdminPage = () => {
     },
   });
 
-  // Fetch cars on component mount
   useEffect(() => {
     fetchCars();
   }, [user]);
 
-  // Fetch cars from Supabase
   const fetchCars = async () => {
     try {
       const { data, error } = await supabase
@@ -125,7 +118,111 @@ const AdminPage = () => {
     }
   };
 
-  // Handle car form submission
+  const updateCar = async (carId: string, car: any) => {
+    setUpdating(true);
+    setUpdateError(null);
+    
+    try {
+      const updateData = {
+        title: car.title,
+        make: car.make, 
+        model: car.model,
+        year: car.year,
+        price: car.price,
+        description: car.description,
+        condition: car.condition
+      } as any;
+      
+      const { error } = await supabase
+        .from('cars')
+        .update(updateData)
+        .eq('id', carId as any);
+      
+      if (error) {
+        setUpdateError(error.message);
+        console.error("Error updating car:", error);
+        return false;
+      }
+      
+      return true;
+    } catch (error: any) {
+      setUpdateError(error.message || "An error occurred during update");
+      console.error("Error updating car:", error);
+      return false;
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const createCar = async (car: any) => {
+    setCreating(true);
+    setCreateError(null);
+    
+    try {
+      const carData = {
+        title: car.title,
+        make: car.make,
+        model: car.model,
+        year: car.year,
+        price: car.price,
+        description: car.description,
+        condition: car.condition,
+        user_id: adminUserId || user?.id
+      } as any;
+      
+      const { error } = await supabase
+        .from('cars')
+        .insert(carData);
+      
+      if (error) {
+        setCreateError(error.message);
+        console.error("Error creating car:", error);
+        return false;
+      }
+      
+      return true;
+    } catch (error: any) {
+      setCreateError(error.message || "An error occurred during creation");
+      console.error("Error creating car:", error);
+      return false;
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const deleteCar = async (carId: string) => {
+    setDeleting(true);
+    
+    try {
+      const { error } = await supabase
+        .from('cars')
+        .delete()
+        .eq('id', carId as any);
+      
+      if (error) {
+        console.error("Error deleting car:", error);
+        toast({
+          title: "Delete Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      return true;
+    } catch (error: any) {
+      console.error("Error deleting car:", error);
+      toast({
+        title: "Delete Failed",
+        description: error.message || "An error occurred",
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const onSubmit = async (values: CarFormValues) => {
     try {
       if (!user?.id) {
@@ -138,47 +235,19 @@ const AdminPage = () => {
       }
 
       if (selectedCar) {
-        // Update existing car - ensure all required fields are present
-        const { error } = await supabase
-          .from('cars')
-          .update({
-            title: values.title,
-            make: values.make,
-            model: values.model,
-            year: values.year,
-            price: values.price,
-            description: values.description,
-            condition: values.condition,
-            // user_id doesn't need to be updated for existing cars
-          })
-          .eq('id', selectedCar.id);
-
+        const { error } = await updateCar(selectedCar.id, values);
         if (error) throw error;
         toast({ title: "Car Updated", description: "Car listing updated successfully" });
       } else {
-        // Add new car - ensure all required fields are included
-        const { error } = await supabase
-          .from('cars')
-          .insert({
-            title: values.title,
-            make: values.make,
-            model: values.model,
-            year: values.year,
-            price: values.price,
-            description: values.description,
-            condition: values.condition,
-            user_id: user.id,
-          });
-
+        const { error } = await createCar(values);
         if (error) throw error;
         toast({ title: "Car Added", description: "New car listing added successfully" });
       }
 
-      // Reset form and close dialog
       form.reset();
       setIsAddDialogOpen(false);
       setSelectedCar(null);
-      fetchCars(); // Refresh car list
+      fetchCars();
     } catch (error) {
       toast({
         title: "Error",
@@ -188,14 +257,9 @@ const AdminPage = () => {
     }
   };
 
-  // Delete a car listing
   const handleDeleteCar = async (carId: string) => {
     try {
-      const { error } = await supabase
-        .from('cars')
-        .delete()
-        .eq('id', carId);
-
+      const { error } = await deleteCar(carId);
       if (error) throw error;
       
       toast({ 
@@ -203,7 +267,7 @@ const AdminPage = () => {
         description: "Car listing removed successfully" 
       });
       
-      fetchCars(); // Refresh car list
+      fetchCars();
     } catch (error) {
       toast({
         title: "Error",
@@ -213,7 +277,6 @@ const AdminPage = () => {
     }
   };
 
-  // Edit a car listing
   const handleEditCar = (car: any) => {
     setSelectedCar(car);
     form.reset({
@@ -228,7 +291,6 @@ const AdminPage = () => {
     setIsAddDialogOpen(true);
   };
 
-  // Render car form dialog
   const renderCarForm = () => (
     <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
       <DialogContent>
@@ -359,7 +421,6 @@ const AdminPage = () => {
           </div>
         </div>
 
-        {/* Dashboard Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -422,7 +483,6 @@ const AdminPage = () => {
           </Card>
         </div>
 
-        {/* Analytics Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <Card>
             <CardHeader>
@@ -478,7 +538,6 @@ const AdminPage = () => {
           </Card>
         </div>
 
-        {/* Cars Management Section */}
         <div className="space-y-6 mt-8">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold">Manage Car Listings</h2>
@@ -545,7 +604,6 @@ const AdminPage = () => {
           </div>
         </div>
 
-        {/* Render car form dialog */}
         {renderCarForm()}
       </div>
     </Layout>

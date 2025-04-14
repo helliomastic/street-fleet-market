@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,25 +24,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let authListener: { data: { subscription: { unsubscribe: () => void } } };
     let messageChannel: any = null;
 
-    // Set up auth state listener
     const setupAuthListener = async () => {
-      // First check existing session
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       
       if (currentSession?.user) {
-        // Ensure user profile exists
         await ensureUserProfileExists(currentSession.user);
         checkIsAdmin(currentSession.user.id);
-        
-        // Set up message subscription only if logged in
         setupMessageSubscription(currentSession.user.id);
       }
       
       setIsLoading(false);
       
-      // Then listen for changes
       authListener = supabase.auth.onAuthStateChange(async (event, newSession) => {
         setSession(newSession);
         setUser(newSession?.user ?? null);
@@ -55,11 +48,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
           
           if (newSession?.user) {
-            // Ensure user profile exists
             await ensureUserProfileExists(newSession.user);
             checkIsAdmin(newSession.user.id);
-            
-            // Set up message subscription
             setupMessageSubscription(newSession.user.id);
           }
         } else if (event === 'SIGNED_OUT') {
@@ -70,7 +60,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           setIsAdmin(false);
           
-          // Clean up message subscription
           if (messageChannel) {
             supabase.removeChannel(messageChannel);
             messageChannel = null;
@@ -80,12 +69,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     
     const setupMessageSubscription = (userId: string) => {
-      // Remove existing subscription if any
       if (messageChannel) {
         supabase.removeChannel(messageChannel);
       }
       
-      // Create new subscription
       messageChannel = supabase
         .channel(`messages:${userId}`)
         .on('postgres_changes', {
@@ -106,25 +93,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     setupAuthListener();
 
-    // Cleanup function
     return () => {
       if (authListener) authListener.data.subscription.unsubscribe();
       if (messageChannel) supabase.removeChannel(messageChannel);
     };
   }, [toast]);
 
-  // Ensure user profile exists in the profiles table
   const ensureUserProfileExists = async (user: User) => {
     try {
-      // Check if profile exists
       const { data: existingProfile, error: checkError } = await supabase
         .from('profiles')
         .select('id')
         .eq('id', user.id as any)
         .single();
       
-      if (checkError && !existingProfile) {
-        // Profile doesn't exist, create one
+      if (checkError || !existingProfile) {
         const fullName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
         const username = user.email?.split('@')[0] || `user_${Math.random().toString(36).substring(2, 10)}`;
         
@@ -161,7 +144,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       
-      setIsAdmin(data?.role === 'admin' || !!data?.is_admin);
+      if (data) {
+        setIsAdmin(data.role === 'admin' || !!data.is_admin);
+      } else {
+        setIsAdmin(false);
+      }
     } catch (error) {
       console.error('Error checking admin status:', error);
     }

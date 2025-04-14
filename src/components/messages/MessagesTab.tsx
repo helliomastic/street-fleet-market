@@ -82,19 +82,24 @@ const MessagesTab = () => {
         console.error("Error fetching received messages:", receivedError);
       } else if (receivedData) {
         // Now get profile data for each message sender
-        const receivedWithProfiles = await Promise.all((receivedData).map(async (msg) => {
+        const receivedWithProfiles = await Promise.all(receivedData.map(async (msg) => {
+          // Check if msg exists and has the necessary properties
+          if (!msg || typeof msg !== 'object') {
+            return null;
+          }
+          
           // Get sender profile
           const { data: senderData } = await supabase
             .from('profiles')
             .select('full_name')
-            .eq('id', msg.sender_id)
+            .eq('id', msg.sender_id as string)
             .single();
             
           // Get recipient profile (should be the current user)
           const { data: recipientData } = await supabase
             .from('profiles')
             .select('full_name')
-            .eq('id', msg.recipient_id)
+            .eq('id', msg.recipient_id as string)
             .single();
             
           return {
@@ -104,7 +109,8 @@ const MessagesTab = () => {
           } as Message;
         }));
         
-        setReceivedMessages(receivedWithProfiles as Message[]);
+        // Filter out any null values from the array
+        setReceivedMessages(receivedWithProfiles.filter(Boolean) as Message[]);
       }
 
       // Then, fetch sent messages
@@ -126,19 +132,24 @@ const MessagesTab = () => {
         console.error("Error fetching sent messages:", sentError);
       } else if (sentData) {
         // Now get profile data for each message recipient
-        const sentWithProfiles = await Promise.all((sentData).map(async (msg) => {
+        const sentWithProfiles = await Promise.all(sentData.map(async (msg) => {
+          // Check if msg exists and has the necessary properties
+          if (!msg || typeof msg !== 'object') {
+            return null;
+          }
+          
           // Get sender profile (should be the current user)
           const { data: senderData } = await supabase
             .from('profiles')
             .select('full_name')
-            .eq('id', msg.sender_id)
+            .eq('id', msg.sender_id as string)
             .single();
             
           // Get recipient profile
           const { data: recipientData } = await supabase
             .from('profiles')
             .select('full_name')
-            .eq('id', msg.recipient_id)
+            .eq('id', msg.recipient_id as string)
             .single();
             
           return {
@@ -148,7 +159,8 @@ const MessagesTab = () => {
           } as Message;
         }));
         
-        setSentMessages(sentWithProfiles as Message[]);
+        // Filter out any null values from the array
+        setSentMessages(sentWithProfiles.filter(Boolean) as Message[]);
       }
     } catch (error) {
       console.error("Error fetching messages:", error);
@@ -208,6 +220,7 @@ const MessagesTab = () => {
           ? selectedMessage.recipient_id 
           : selectedMessage.sender_id,
         message: replyText,
+        read: false, // Make sure to include all required fields
       } as any;
 
       const { error } = await supabase

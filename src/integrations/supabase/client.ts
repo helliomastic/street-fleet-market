@@ -22,7 +22,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     params: {
       eventsPerSecond: 10
     },
-    persistSession: true,
+    // Remove persistSession property from realtime config
     autoConnectWithAuth: true,
     maxReconnectAttempts: 5
   },

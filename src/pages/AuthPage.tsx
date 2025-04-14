@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,7 +19,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-// Login form schema
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
   password: z.string().min(6, {
@@ -28,7 +26,6 @@ const loginSchema = z.object({
   }),
 });
 
-// Signup form schema
 const signupSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
   password: z.string().min(6, {
@@ -44,7 +41,6 @@ const AuthPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Login form
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -53,7 +49,6 @@ const AuthPage = () => {
     },
   });
 
-  // Signup form
   const signupForm = useForm<z.infer<typeof signupSchema>>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
@@ -63,7 +58,6 @@ const AuthPage = () => {
     },
   });
 
-  // Handle login
   const handleLogin = async (data: z.infer<typeof loginSchema>) => {
     try {
       setIsLoading(true);
@@ -93,12 +87,10 @@ const AuthPage = () => {
     }
   };
 
-  // Handle signup
   const handleSignup = async (data: z.infer<typeof signupSchema>) => {
     try {
       setIsLoading(true);
       
-      // Create user with Auth
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -113,39 +105,43 @@ const AuthPage = () => {
         throw signUpError;
       }
       
-      // Manually create profile entry to ensure it exists
-      if (authData.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .upsert({
-            id: authData.user.id,
-            full_name: data.fullName,
-            username: data.email.split('@')[0],
-            role: 'user',
-          }, { 
-            onConflict: 'id',
-          });
+      const createUserProfile = async (user: User, fullName: string) => {
+        try {
+          const username = user.email?.split('@')[0] || '';
           
-        if (profileError) {
-          console.error("Error creating profile:", profileError);
+          const profileData = {
+            id: user.id,
+            full_name: fullName || username,
+            username: username,
+            role: 'user'
+          } as any;
+          
+          const { error } = await supabase
+            .from('profiles')
+            .insert(profileData);
+            
+          if (error) {
+            console.error("Error creating profile:", error);
+          }
+        } catch (error) {
+          console.error("Error creating profile:", error);
         }
-      }
+      };
+
+      createUserProfile(authData.user, data.fullName);
 
       toast({
         title: "Signup successful",
         description: "Your account has been created successfully. You can now log in.",
       });
       
-      // Redirect to dashboard after successful signup
       if (authData.session) {
         navigate("/dashboard");
       } else {
-        // If no session (email confirmation required), pre-fill login form
         loginForm.setValue("email", data.email);
         loginForm.setValue("password", data.password);
       }
       
-      // Reset signup form
       signupForm.reset();
     } catch (error: any) {
       toast({
