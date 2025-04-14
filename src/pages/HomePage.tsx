@@ -16,10 +16,10 @@ const HomePage = () => {
       try {
         setLoading(true);
         
-        // Fetch car listings from Supabase
+        // Fetch car listings from Supabase without joining profiles
         const { data, error } = await supabase
           .from('cars')
-          .select('*, profiles(*)')
+          .select('*')
           .order('created_at', { ascending: false });
           
         if (error) {
@@ -40,8 +40,8 @@ const HomePage = () => {
           postedDate: new Date(car.created_at || new Date()),
           userId: car.user_id,
           condition: car.condition,
-          sellerName: car.profiles?.full_name || 'Anonymous',
-          createdAt: car.created_at ? new Date(car.created_at) : new Date(),
+          sellerName: 'Anonymous', // Default seller name
+          createdAt: new Date(car.created_at || new Date()),
         }));
         
         setListings(formattedListings);

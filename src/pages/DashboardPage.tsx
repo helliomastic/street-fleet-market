@@ -75,6 +75,8 @@ const DashboardPage = () => {
           postedDate: new Date(car.created_at || new Date()),
           userId: car.user_id,
           condition: car.condition,
+          sellerName: userProfile?.full_name || 'Anonymous', // Add missing property
+          createdAt: new Date(car.created_at || new Date()) // Add missing property
         }));
         
         setUserListings(formattedListings);

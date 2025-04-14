@@ -20,7 +20,7 @@ export const generateMockListings = (count: number): CarListing[] => {
     { make: "Hyundai", models: ["Elantra", "Sonata", "Tucson", "Santa Fe", "Palisade"] }
   ];
 
-  const conditions = ["Excellent", "Good", "Fair", "Like New"];
+  const conditions = ["excellent", "good", "fair", "like_new"];
   const colors = ["Black", "White", "Silver", "Blue", "Red", "Gray"];
   const transmissions = ["Automatic", "Manual"];
   const fuelTypes = ["Gasoline", "Diesel", "Electric", "Hybrid"];
@@ -129,6 +129,9 @@ export const generateMockListings = (count: number): CarListing[] => {
     // Generate detailed description
     const description = `This ${year} ${make} ${model} is in ${condition.toLowerCase()} condition. It features a ${color.toLowerCase()} exterior, ${transmission.toLowerCase()} transmission, and runs on ${fuelType.toLowerCase()} fuel. The car has been well-maintained and is ready for its new owner. Features include air conditioning, power windows, and a premium sound system.`;
 
+    // Create timestamp for the car listing that's within the last 30 days
+    const createdAtDate = new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000);
+
     return {
       id: generateId(),
       title,
@@ -139,7 +142,11 @@ export const generateMockListings = (count: number): CarListing[] => {
       image: carImage,
       description,
       userId: "user-" + (index % 5), // Distribute cars among 5 mock users
-      createdAt: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString()
+      location: "United States", // Add missing property
+      postedDate: createdAtDate, // Add missing property
+      condition, // Add missing property
+      sellerName: mockUsers[index % 5].name, // Add missing property
+      createdAt: createdAtDate // Use the created date
     };
   });
 };
