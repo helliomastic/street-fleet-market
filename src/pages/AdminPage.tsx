@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   Table, 
   TableBody, 
@@ -37,16 +39,19 @@ import { Car, Users, ShieldAlert, DollarSign, Edit, Trash, PlusCircle } from "lu
 import { useAuth } from "@/context/AuthContext";
 import { BarChart, LineChart, ResponsiveContainer, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Line } from "recharts";
 
-// Validation schema for car listing
+// Validation schema for car listing - updated to match database requirements
 const carListingSchema = z.object({
   title: z.string().min(1, "Title is required"),
   make: z.string().min(1, "Make is required"),
   model: z.string().min(1, "Model is required"),
   year: z.coerce.number().min(1900, "Invalid year"),
   price: z.coerce.number().min(0, "Price must be positive"),
-  description: z.string().optional(),
-  condition: z.string().optional(),
+  description: z.string().min(1, "Description is required"),
+  condition: z.string().min(1, "Condition is required"),
 });
+
+// Type for form values
+type CarFormValues = z.infer<typeof carListingSchema>;
 
 // Mock stats data
 const MOCK_STATS = {
@@ -83,7 +88,7 @@ const AdminPage = () => {
   const [selectedCar, setSelectedCar] = useState<any>(null);
 
   // Form for adding/editing car
-  const form = useForm<z.infer<typeof carListingSchema>>({
+  const form = useForm<CarFormValues>({
     resolver: zodResolver(carListingSchema),
     defaultValues: {
       title: "",
@@ -121,27 +126,48 @@ const AdminPage = () => {
   };
 
   // Handle car form submission
-  const onSubmit = async (values: z.infer<typeof carListingSchema>) => {
+  const onSubmit = async (values: CarFormValues) => {
     try {
+      if (!user?.id) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to perform this action",
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (selectedCar) {
-        // Update existing car
+        // Update existing car - ensure all required fields are present
         const { error } = await supabase
           .from('cars')
           .update({
-            ...values,
-            user_id: user?.id,
+            title: values.title,
+            make: values.make,
+            model: values.model,
+            year: values.year,
+            price: values.price,
+            description: values.description,
+            condition: values.condition,
+            // user_id doesn't need to be updated for existing cars
           })
           .eq('id', selectedCar.id);
 
         if (error) throw error;
         toast({ title: "Car Updated", description: "Car listing updated successfully" });
       } else {
-        // Add new car
+        // Add new car - ensure all required fields are included
         const { error } = await supabase
           .from('cars')
           .insert({
-            ...values,
-            user_id: user?.id,
+            title: values.title,
+            make: values.make,
+            model: values.model,
+            year: values.year,
+            price: values.price,
+            description: values.description,
+            condition: values.condition,
+            user_id: user.id,
           });
 
         if (error) throw error;
@@ -190,7 +216,15 @@ const AdminPage = () => {
   // Edit a car listing
   const handleEditCar = (car: any) => {
     setSelectedCar(car);
-    form.reset(car);
+    form.reset({
+      title: car.title,
+      make: car.make,
+      model: car.model,
+      year: car.year,
+      price: car.price,
+      description: car.description,
+      condition: car.condition,
+    });
     setIsAddDialogOpen(true);
   };
 
@@ -294,7 +328,7 @@ const AdminPage = () => {
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Input placeholder="Car Description" {...field} />
+                    <Textarea placeholder="Car Description" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -451,6 +485,15 @@ const AdminPage = () => {
             <Button 
               onClick={() => {
                 setSelectedCar(null);
+                form.reset({
+                  title: "",
+                  make: "",
+                  model: "",
+                  year: undefined,
+                  price: undefined,
+                  description: "",
+                  condition: "",
+                });
                 setIsAddDialogOpen(true);
               }}
               className="flex items-center gap-2"
