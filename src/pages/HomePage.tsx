@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Layout from "@/components/layout/Layout";
 import CarCard, { CarListing } from "@/components/car/CarCard";
 import SearchFilters from "@/components/car/SearchFilters";
-import { mockListings } from "@/utils/mockData";
+import { supabase } from "@/integrations/supabase/client";
 
 const HomePage = () => {
   const [listings, setListings] = useState<CarListing[]>([]);
@@ -11,14 +11,40 @@ const HomePage = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // In a real app, this would fetch data from Supabase
+    // Fetch car listings from Supabase
     const fetchListings = async () => {
       try {
         setLoading(true);
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 800));
-        setListings(mockListings);
-        setFilteredListings(mockListings);
+        
+        // Fetch car listings from Supabase
+        const { data, error } = await supabase
+          .from('cars')
+          .select('*, profiles(full_name)')
+          .order('created_at', { ascending: false });
+          
+        if (error) {
+          throw error;
+        }
+        
+        // Convert the data to match our CarListing type
+        const formattedListings = data.map(car => ({
+          id: car.id,
+          title: car.title,
+          make: car.make,
+          model: car.model,
+          year: car.year,
+          price: car.price,
+          description: car.description,
+          image: car.image_url,
+          location: "United States", // Default location
+          postedDate: new Date(car.created_at || new Date()),
+          userId: car.user_id,
+          condition: car.condition,
+          sellerName: car.profiles?.full_name || 'Anonymous',
+        }));
+        
+        setListings(formattedListings);
+        setFilteredListings(formattedListings);
       } catch (error) {
         console.error("Error fetching listings:", error);
       } finally {

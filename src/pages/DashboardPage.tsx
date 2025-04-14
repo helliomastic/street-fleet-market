@@ -1,13 +1,12 @@
 
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle, Car as CarIcon, Edit, Trash, User, ArrowRight } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { CarListing } from "@/components/car/CarCard";
-import { mockListings } from "@/utils/mockData";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,40 +19,132 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
 
 const DashboardPage = () => {
   const [userListings, setUserListings] = useState<CarListing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
+  // Check if user is authenticated
   useEffect(() => {
-    // Mock fetching user's listings
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Authentication required",
+        description: "You need to log in to view your dashboard.",
+      });
+      navigate("/auth?tab=login");
+    }
+  }, [user, navigate, toast]);
+
+  // Fetch user's car listings
+  useEffect(() => {
     const fetchUserListings = async () => {
+      if (!user) return;
+      
       try {
         setLoading(true);
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 800));
-        // In a real app, would filter by logged-in user ID
-        // For now, just filter to the first mock user
-        const userCars = mockListings.filter(car => car.userId === "user-0");
-        setUserListings(userCars);
+        
+        // Fetch user's car listings from Supabase
+        const { data, error } = await supabase
+          .from('cars')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+          
+        if (error) {
+          throw error;
+        }
+        
+        // Convert the data to match our CarListing type
+        const formattedListings = data.map(car => ({
+          id: car.id,
+          title: car.title,
+          make: car.make,
+          model: car.model,
+          year: car.year,
+          price: car.price,
+          description: car.description,
+          image: car.image_url,
+          location: "United States", // Default location
+          postedDate: new Date(car.created_at || new Date()),
+          userId: car.user_id,
+          condition: car.condition,
+        }));
+        
+        setUserListings(formattedListings);
       } catch (error) {
         console.error("Error fetching user listings:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to load your car listings. Please refresh and try again.",
+        });
       } finally {
         setLoading(false);
       }
     };
 
-    fetchUserListings();
-  }, []);
+    // Fetch user profile
+    const fetchUserProfile = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+          
+        if (error) {
+          throw error;
+        }
+        
+        setUserProfile(data);
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+      }
+    };
 
-  const handleDeleteListing = (id: string) => {
-    // In a real app, would delete from Supabase
-    setUserListings(userListings.filter(car => car.id !== id));
-    toast({
-      title: "Car listing deleted",
-      description: "Your car listing has been successfully deleted."
-    });
+    fetchUserListings();
+    fetchUserProfile();
+  }, [user, toast]);
+
+  const handleDeleteListing = async (id: string) => {
+    if (!user) return;
+    
+    try {
+      // Delete the car listing from Supabase
+      const { error } = await supabase
+        .from('cars')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+        
+      if (error) {
+        throw error;
+      }
+      
+      // Update local state
+      setUserListings(userListings.filter(car => car.id !== id));
+      
+      toast({
+        title: "Car listing deleted",
+        description: "Your car listing has been successfully deleted."
+      });
+    } catch (error) {
+      console.error("Error deleting car listing:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete your car listing. Please try again.",
+      });
+    }
   };
 
   return (
@@ -185,11 +276,13 @@ const DashboardPage = () => {
                 <CardHeader>
                   <div className="flex items-center gap-4">
                     <div className="h-16 w-16 bg-brand-blue text-white rounded-full flex items-center justify-center text-xl font-bold">
-                      JD
+                      {userProfile?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
                     </div>
                     <div>
-                      <CardTitle>John Doe</CardTitle>
-                      <CardDescription>Member since April 2023</CardDescription>
+                      <CardTitle>{userProfile?.full_name || 'User'}</CardTitle>
+                      <CardDescription>
+                        Member since {new Date(user?.created_at || Date.now()).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                      </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
@@ -197,19 +290,19 @@ const DashboardPage = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-muted-foreground">Email</p>
-                      <p>john@example.com</p>
+                      <p>{user?.email}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Phone</p>
-                      <p>+1 (555) 123-4567</p>
+                      <p className="text-sm text-muted-foreground">Username</p>
+                      <p>{userProfile?.username || 'Not set'}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Location</p>
-                      <p>San Francisco, CA</p>
+                      <p className="text-sm text-muted-foreground">Role</p>
+                      <p>{userProfile?.role || 'User'}</p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Listings</p>
-                      <p>{userListings.length} active listings</p>
+                      <p>{userListings.length} active {userListings.length === 1 ? 'listing' : 'listings'}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -230,7 +323,7 @@ const DashboardPage = () => {
                     </CardHeader>
                     <CardFooter className="flex justify-between">
                       <div className="text-sm text-muted-foreground">
-                        Last updated: 2 months ago
+                        Last updated: {new Date(user?.updated_at || Date.now()).toLocaleDateString()}
                       </div>
                       <Button variant="ghost" size="sm">
                         Manage

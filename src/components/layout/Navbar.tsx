@@ -14,30 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-// Temporary auth state until Supabase integration
-const useAuth = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [user, setUser] = useState<{ name: string } | null>(null);
-
-  // This will be replaced with actual Supabase auth logic
-  const login = () => {
-    setIsLoggedIn(true);
-    setUser({ name: "John Doe" });
-  };
-
-  const logout = () => {
-    setIsLoggedIn(false);
-    setUser(null);
-  };
-
-  const toggleAdmin = () => {
-    setIsAdmin(!isAdmin);
-  };
-
-  return { isLoggedIn, isAdmin, user, login, logout, toggleAdmin };
-};
+import { useAuth } from "@/context/AuthContext";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -45,29 +22,26 @@ const Navbar = () => {
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
-  const { isLoggedIn, isAdmin, user, login, logout, toggleAdmin } = useAuth();
+  const { user, isLoading, signOut } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Close mobile menu when route changes
   useEffect(() => {
     setIsMenuOpen(false);
   }, [location.pathname]);
 
-  const handleLogout = () => {
-    logout();
-    toast({
-      title: "Logged out successfully",
-      description: "You have been logged out of your account.",
-    });
-    navigate("/");
-  };
+  // Check if user has admin role (for demo purposes)
+  useEffect(() => {
+    if (user) {
+      // In a real app, would check user's role in the profiles table
+      // For now, just hardcode for demo
+      setIsAdmin(false);
+    }
+  }, [user]);
 
-  // Temporary login function for demo purposes
-  const handleLogin = () => {
-    login();
-    toast({
-      title: "Logged in successfully",
-      description: "Welcome back to Street Fleet Market!",
-    });
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/");
   };
 
   return (
@@ -86,7 +60,7 @@ const Navbar = () => {
               <Link to="/" className="hover:text-brand-orange transition-colors">
                 Home
               </Link>
-              {isLoggedIn && (
+              {user && (
                 <>
                   <Link to="/dashboard" className="hover:text-brand-orange transition-colors">
                     Dashboard
@@ -106,16 +80,18 @@ const Navbar = () => {
 
           {/* Auth buttons or user menu */}
           <div className="flex items-center">
-            {isLoggedIn ? (
+            {isLoading ? (
+              <div className="h-8 w-8 rounded-full bg-gray-300 animate-pulse"></div>
+            ) : user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative rounded-full h-8 w-8 bg-brand-orange">
-                    <span className="font-bold">{user?.name.charAt(0)}</span>
+                    <span className="font-bold">{user.user_metadata.full_name?.charAt(0) || user.email?.charAt(0)}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <div className="px-2 py-1.5 text-sm font-medium">
-                    {user?.name}
+                    {user.user_metadata.full_name || user.email}
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
@@ -139,9 +115,6 @@ const Navbar = () => {
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={toggleAdmin} className="cursor-pointer">
-                    <span>{isAdmin ? "Disable Admin" : "Enable Admin"}</span>
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-500 focus:text-red-500">
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>
@@ -150,11 +123,11 @@ const Navbar = () => {
               </DropdownMenu>
             ) : (
               <div className="flex space-x-2">
-                <Button variant="outline" className="text-white border-white hover:bg-white hover:text-brand-blue">
-                  Sign Up
+                <Button variant="outline" asChild className="text-white border-white hover:bg-white hover:text-brand-blue">
+                  <Link to="/auth?tab=signup">Sign Up</Link>
                 </Button>
-                <Button onClick={handleLogin} className="bg-brand-orange hover:bg-opacity-90">
-                  Log In
+                <Button asChild className="bg-brand-orange hover:bg-opacity-90">
+                  <Link to="/auth?tab=login">Log In</Link>
                 </Button>
               </div>
             )}
@@ -180,7 +153,7 @@ const Navbar = () => {
               <Link to="/" className="hover:text-brand-orange transition-colors">
                 Home
               </Link>
-              {isLoggedIn && (
+              {user && (
                 <>
                   <Link to="/dashboard" className="hover:text-brand-orange transition-colors">
                     Dashboard
@@ -193,6 +166,16 @@ const Navbar = () => {
                       Admin Panel
                     </Link>
                   )}
+                </>
+              )}
+              {!user && (
+                <>
+                  <Link to="/auth?tab=login" className="hover:text-brand-orange transition-colors">
+                    Login
+                  </Link>
+                  <Link to="/auth?tab=signup" className="hover:text-brand-orange transition-colors">
+                    Sign Up
+                  </Link>
                 </>
               )}
             </div>
