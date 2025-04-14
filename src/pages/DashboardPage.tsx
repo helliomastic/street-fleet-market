@@ -89,7 +89,18 @@ const DashboardPage = () => {
     try {
       setDeletingCarId(carId);
       
-      // Delete the car from the database
+      // First, delete all messages associated with this car
+      const { error: messagesError } = await supabase
+        .from('messages')
+        .delete()
+        .eq('car_id', carId);
+        
+      if (messagesError) {
+        console.error("Error deleting related messages:", messagesError);
+        throw messagesError;
+      }
+      
+      // Then delete the car
       const { error } = await supabase
         .from('cars')
         .delete()

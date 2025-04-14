@@ -1,4 +1,4 @@
-// Add this code to the imports section
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
@@ -181,6 +181,23 @@ const AdminPage = () => {
   // Handler for deleting a car listing
   const handleDeleteCar = async (id: string) => {
     try {
+      // First, delete all messages associated with this car
+      const { error: messagesError } = await supabase
+        .from('messages')
+        .delete()
+        .eq('car_id', id);
+        
+      if (messagesError) {
+        console.error("Error deleting related messages:", messagesError);
+        toast({
+          title: "Error",
+          description: messagesError.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Then delete the car
       const { error } = await supabase
         .from('cars')
         .delete()
