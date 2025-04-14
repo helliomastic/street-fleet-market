@@ -21,6 +21,17 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 
+interface MessageProfile {
+  full_name: string | null;
+}
+
+interface MessageCar {
+  title: string;
+  make: string;
+  model: string;
+  year: number;
+}
+
 interface Message {
   id: string;
   car_id: string;
@@ -29,18 +40,9 @@ interface Message {
   message: string;
   read: boolean;
   created_at: string;
-  car: {
-    title: string;
-    make: string;
-    model: string;
-    year: number;
-  };
-  sender_profile: {
-    full_name: string;
-  };
-  recipient_profile: {
-    full_name: string;
-  };
+  car: MessageCar;
+  sender_profile: MessageProfile;
+  recipient_profile: MessageProfile;
 }
 
 const MessagesTab = () => {
@@ -75,8 +77,8 @@ const MessagesTab = () => {
 
       if (receivedError) {
         console.error("Error fetching received messages:", receivedError);
-      } else {
-        setReceivedMessages(received as Message[]);
+      } else if (received) {
+        setReceivedMessages(received as unknown as Message[]);
       }
 
       // Fetch sent messages
@@ -93,8 +95,8 @@ const MessagesTab = () => {
 
       if (sentError) {
         console.error("Error fetching sent messages:", sentError);
-      } else {
-        setSentMessages(sent as Message[]);
+      } else if (sent) {
+        setSentMessages(sent as unknown as Message[]);
       }
     } catch (error) {
       console.error("Error fetching messages:", error);

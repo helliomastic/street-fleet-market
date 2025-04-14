@@ -35,15 +35,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           // Enable realtime subscriptions for messages after login
           if (session?.user) {
-            supabase
-              .from('messages')
-              .on('INSERT', (payload) => {
-                if (payload.new && payload.new.recipient_id === session.user.id) {
-                  toast({
-                    title: 'New Message',
-                    description: 'You have received a new message',
-                  });
-                }
+            // Use the channel API for realtime subscriptions
+            const channel = supabase
+              .channel('public:messages')
+              .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'messages',
+                filter: `recipient_id=eq.${session.user.id}`
+              }, (payload) => {
+                toast({
+                  title: 'New Message',
+                  description: 'You have received a new message',
+                });
               })
               .subscribe();
           }
@@ -67,15 +71,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Enable realtime subscriptions for messages if already logged in
       if (session?.user) {
-        supabase
-          .from('messages')
-          .on('INSERT', (payload) => {
-            if (payload.new && payload.new.recipient_id === session.user.id) {
-              toast({
-                title: 'New Message',
-                description: 'You have received a new message',
-              });
-            }
+        // Use the channel API for realtime subscriptions
+        const channel = supabase
+          .channel('public:messages')
+          .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `recipient_id=eq.${session.user.id}`
+          }, (payload) => {
+            toast({
+              title: 'New Message',
+              description: 'You have received a new message',
+            });
           })
           .subscribe();
       }
