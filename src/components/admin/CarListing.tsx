@@ -140,23 +140,44 @@ export const CarListingComponent = ({ cars, loadingCars, fetchCars }: CarListing
     try {
       setDeletingAll(true);
       
-      // First, delete all messages related to any car
-      const { error: messagesError } = await supabase
-        .from('messages')
-        .delete()
-        .neq('car_id', 'dummy_value'); // This will match all car_ids
+      // Get all car IDs first
+      const { data: carIds, error: carIdError } = await supabase
+        .from('cars')
+        .select('id');
         
-      if (messagesError) {
-        console.error("Error deleting related messages:", messagesError);
+      if (carIdError) {
+        console.error("Error fetching car IDs:", carIdError);
         toast({
           title: "Error",
-          description: "Failed to delete related messages: " + messagesError.message,
+          description: "Failed to fetch car IDs: " + carIdError.message,
           variant: "destructive",
         });
         return;
       }
       
-      // Then delete all cars
+      // If there are no cars, no need to continue
+      if (!carIds || carIds.length === 0) {
+        toast({
+          title: "Info",
+          description: "No car listings to delete",
+        });
+        return;
+      }
+      
+      // Delete messages for each car individually to ensure we don't miss any
+      for (const car of carIds) {
+        const { error: messagesError } = await supabase
+          .from('messages')
+          .delete()
+          .eq('car_id', car.id);
+          
+        if (messagesError) {
+          console.error(`Error deleting messages for car ${car.id}:`, messagesError);
+          // Continue to next car even if this one fails
+        }
+      }
+      
+      // Now that all messages are deleted, delete all cars
       const { error } = await supabase
         .from('cars')
         .delete()
@@ -172,6 +193,7 @@ export const CarListingComponent = ({ cars, loadingCars, fetchCars }: CarListing
         return;
       }
       
+      // Refresh the car list
       fetchCars();
       
       toast({

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Edit, Trash2 } from "lucide-react";
 import { 
@@ -29,42 +28,25 @@ export const CarListItem = ({ car, onEdit, fetchCars }: CarListItemProps) => {
     try {
       setUpdating(true);
       
-      const { data: messageCheck, error: checkError } = await supabase
+      // First delete all messages related to this car
+      const { error: messagesError } = await supabase
         .from('messages')
-        .select('id')
+        .delete()
         .eq('car_id', id);
         
-      if (checkError) {
-        console.error("Error checking for messages:", checkError);
+      if (messagesError) {
+        console.error("Error deleting related messages:", messagesError);
         toast({
           title: "Error",
-          description: "Failed to check for messages: " + checkError.message,
+          description: "Failed to delete related messages: " + messagesError.message,
           variant: "destructive",
         });
         return;
       }
       
-      console.log(`Found ${messageCheck?.length || 0} messages to delete for car ${id}`);
+      console.log("Successfully deleted messages for car:", id);
       
-      if (messageCheck && messageCheck.length > 0) {
-        const { error: messagesError } = await supabase
-          .from('messages')
-          .delete()
-          .eq('car_id', id);
-          
-        if (messagesError) {
-          console.error("Error deleting related messages:", messagesError);
-          toast({
-            title: "Error",
-            description: "Failed to delete related messages: " + messagesError.message,
-            variant: "destructive",
-          });
-          return;
-        }
-        
-        console.log("Successfully deleted messages for car:", id);
-      }
-      
+      // Now that messages are deleted, delete the car
       const { error } = await supabase
         .from('cars')
         .delete()
