@@ -4,7 +4,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react"; 
+import { Trash2, Edit } from "lucide-react"; 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/components/ui/use-toast";
@@ -20,6 +20,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export interface CarListing {
   id: string;
@@ -45,6 +46,7 @@ interface CarCardProps {
 const CarCard = ({ car }: CarCardProps) => {
   const { user } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
+  const navigate = useNavigate();
   const isOwner = user && user.id === car.userId;
   
   // Format the time since posting
@@ -89,6 +91,11 @@ const CarCard = ({ car }: CarCardProps) => {
         title: "Listing deleted",
         description: "Your car listing has been successfully deleted.",
       });
+      
+      // After successful deletion, you might want to redirect or refresh
+      if (window.location.pathname.includes(`/car/${car.id}`)) {
+        navigate('/');
+      }
     } catch (error: any) {
       console.error("Error deleting car:", error);
       toast({
@@ -99,6 +106,10 @@ const CarCard = ({ car }: CarCardProps) => {
     } finally {
       setIsDeleting(false);
     }
+  };
+  
+  const handleEdit = () => {
+    navigate(`/edit-car/${car.id}`);
   };
   
   return (
@@ -138,7 +149,19 @@ const CarCard = ({ car }: CarCardProps) => {
       </Link>
       
       {isOwner && (
-        <div className="absolute top-2 left-2">
+        <div className="absolute top-2 left-2 flex gap-2">
+          <Button 
+            variant="default" 
+            size="icon" 
+            className="w-8 h-8 bg-brand-blue"
+            onClick={(e) => {
+              e.preventDefault();
+              handleEdit();
+            }}
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+          
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button 
