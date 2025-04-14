@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -104,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: existingProfile, error: checkError } = await supabase
         .from('profiles')
         .select('id')
-        .eq('id', user.id as any)
+        .eq('id', user.id)
         .single();
       
       if (checkError || !existingProfile) {
@@ -116,11 +117,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           full_name: fullName,
           username: username,
           role: 'user'
-        } as any;
+        };
         
         const { error: insertError } = await supabase
           .from('profiles')
-          .insert(profileData);
+          .insert(profileData as any);
         
         if (insertError) {
           console.error('Error creating profile:', insertError);
@@ -136,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from('profiles')
         .select('role, is_admin')
-        .eq('id', userId as any)
+        .eq('id', userId)
         .single();
       
       if (error) {

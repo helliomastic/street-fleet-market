@@ -76,7 +76,7 @@ const MessagesTab = () => {
           created_at,
           car:cars(title, make, model, year)
         `)
-        .eq('recipient_id', user?.id as any);
+        .eq('recipient_id', user?.id);
 
       if (receivedError) {
         console.error("Error fetching received messages:", receivedError);
@@ -88,25 +88,33 @@ const MessagesTab = () => {
             return null;
           }
           
-          // Get sender profile
-          const { data: senderData } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', msg.sender_id as string)
-            .single();
-            
-          // Get recipient profile (should be the current user)
-          const { data: recipientData } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', msg.recipient_id as string)
-            .single();
-            
-          return {
-            ...msg,
-            sender_profile: senderData || { full_name: 'Unknown User' },
-            recipient_profile: recipientData || { full_name: 'Unknown User' }
-          } as Message;
+          try {
+            // Get sender profile
+            const { data: senderData } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', msg.sender_id)
+              .single();
+              
+            // Get recipient profile (should be the current user)
+            const { data: recipientData } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', msg.recipient_id)
+              .single();
+              
+            return {
+              ...msg,
+              sender_profile: senderData || { full_name: 'Unknown User' },
+              recipient_profile: recipientData || { full_name: 'Unknown User' },
+              car: Array.isArray(msg.car) && msg.car.length > 0 
+                ? msg.car[0] 
+                : { title: 'Unknown', make: 'Unknown', model: 'Unknown', year: 0 }
+            } as Message;
+          } catch (error) {
+            console.error("Error processing message:", error);
+            return null;
+          }
         }));
         
         // Filter out any null values from the array
@@ -126,7 +134,7 @@ const MessagesTab = () => {
           created_at,
           car:cars(title, make, model, year)
         `)
-        .eq('sender_id', user?.id as any);
+        .eq('sender_id', user?.id);
 
       if (sentError) {
         console.error("Error fetching sent messages:", sentError);
@@ -138,25 +146,33 @@ const MessagesTab = () => {
             return null;
           }
           
-          // Get sender profile (should be the current user)
-          const { data: senderData } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', msg.sender_id as string)
-            .single();
-            
-          // Get recipient profile
-          const { data: recipientData } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', msg.recipient_id as string)
-            .single();
-            
-          return {
-            ...msg,
-            sender_profile: senderData || { full_name: 'Unknown User' },
-            recipient_profile: recipientData || { full_name: 'Unknown User' }
-          } as Message;
+          try {
+            // Get sender profile (should be the current user)
+            const { data: senderData } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', msg.sender_id)
+              .single();
+              
+            // Get recipient profile
+            const { data: recipientData } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', msg.recipient_id)
+              .single();
+              
+            return {
+              ...msg,
+              sender_profile: senderData || { full_name: 'Unknown User' },
+              recipient_profile: recipientData || { full_name: 'Unknown User' },
+              car: Array.isArray(msg.car) && msg.car.length > 0 
+                ? msg.car[0] 
+                : { title: 'Unknown', make: 'Unknown', model: 'Unknown', year: 0 }
+            } as Message;
+          } catch (error) {
+            console.error("Error processing message:", error);
+            return null;
+          }
         }));
         
         // Filter out any null values from the array
@@ -180,8 +196,8 @@ const MessagesTab = () => {
     try {
       const { error } = await supabase
         .from('messages')
-        .update({ read: true } as any)
-        .eq('id', message.id as any);
+        .update({ read: true })
+        .eq('id', message.id);
 
       if (error) {
         console.error("Error marking message as read:", error);
@@ -220,8 +236,8 @@ const MessagesTab = () => {
           ? selectedMessage.recipient_id 
           : selectedMessage.sender_id,
         message: replyText,
-        read: false, // Make sure to include all required fields
-      } as any;
+        read: false
+      };
 
       const { error } = await supabase
         .from('messages')

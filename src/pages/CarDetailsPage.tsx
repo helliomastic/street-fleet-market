@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -50,7 +49,7 @@ const CarDetailsPage = () => {
         const { data: carData, error: carError } = await supabase
           .from('cars')
           .select('*')
-          .eq('id', id as any)
+          .eq('id', id)
           .single();
           
         if (carError) {
@@ -181,8 +180,8 @@ const CarDetailsPage = () => {
           sender_id: user.id,
           recipient_id: seller.id,
           message: contactMessage,
-          read: false // Make sure to include all required fields
-        } as any);
+          read: false
+        });
 
       if (error) {
         console.error("Error sending message:", error);

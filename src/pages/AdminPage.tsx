@@ -1,610 +1,733 @@
+// Add this code to the imports section
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import Layout from "@/components/layout/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/use-toast";
 import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from "@/components/ui/dialog";
-import { 
-  Form, 
-  FormControl, 
-  FormField, 
-  FormItem, 
-  FormLabel, 
-  FormMessage 
-} from "@/components/ui/form";
-import { useToast } from "@/components/ui/use-toast";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { Car, Users, ShieldAlert, DollarSign, Edit, Trash, PlusCircle } from "lucide-react";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useAuth } from "@/context/AuthContext";
-import { BarChart, LineChart, ResponsiveContainer, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Line } from "recharts";
+import { supabase } from "@/integrations/supabase/client";
+import { Car, Users, MessageSquare, Trash2, Edit } from "lucide-react";
 
-const carListingSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  make: z.string().min(1, "Make is required"),
-  model: z.string().min(1, "Model is required"),
-  year: z.coerce.number().min(1900, "Invalid year"),
-  price: z.coerce.number().min(0, "Price must be positive"),
-  description: z.string().min(1, "Description is required"),
-  condition: z.string().min(1, "Condition is required"),
-});
+// Define the state for the car listings, users, and settings
+interface CarListing {
+  id: string;
+  title: string;
+  make: string;
+  model: string;
+  year: number;
+  price: number;
+  image_url?: string;
+  condition: string;
+  description: string;
+  user_id: string;
+}
 
-type CarFormValues = z.infer<typeof carListingSchema>;
+interface UserProfile {
+  id: string;
+  email?: string;
+  full_name?: string;
+  role: string;
+  is_admin?: boolean;
+}
 
-const MOCK_STATS = {
-  totalUsers: 387,
-  totalListings: 1432,
-  activeListings: 876,
-  newListingsThisMonth: 124,
-  newUsersThisMonth: 42,
-  revenue: 8750,
-};
-
-const MOCK_MONTHLY_DATA = [
-  { name: "Jan", listings: 65, users: 24, revenue: 3200 },
-  { name: "Feb", listings: 78, users: 28, revenue: 3800 },
-  { name: "Mar", listings: 82, users: 35, revenue: 4100 },
-  { name: "Apr", listings: 95, users: 39, revenue: 4700 },
-  { name: "May", listings: 102, users: 42, revenue: 5100 },
-  { name: "Jun", listings: 113, users: 48, revenue: 5600 },
-  { name: "Jul", listings: 125, users: 52, revenue: 6200 },
-  { name: "Aug", listings: 132, users: 58, revenue: 6600 },
-  { name: "Sep", listings: 124, users: 47, revenue: 6200 },
-  { name: "Oct", listings: 118, users: 45, revenue: 5900 },
-  { name: "Nov", listings: 110, users: 42, revenue: 5500 },
-  { name: "Dec", listings: 124, users: 47, revenue: 6200 },
-];
-
+// Main component
 const AdminPage = () => {
+  const { user, isAdmin, isLoading } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const { user } = useAuth();
-  const [cars, setCars] = useState<any[]>([]);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [selectedCar, setSelectedCar] = useState<any>(null);
-  const [adminUserId, setAdminUserId] = useState<string | null>(null);
-
-  const form = useForm<CarFormValues>({
-    resolver: zodResolver(carListingSchema),
-    defaultValues: {
-      title: "",
-      make: "",
-      model: "",
-      year: undefined,
-      price: undefined,
-      description: "",
-      condition: "",
-    },
+  
+  const [activeTab, setActiveTab] = useState("listings");
+  const [cars, setCars] = useState<CarListing[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [loadingCars, setLoadingCars] = useState(true);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  
+  // Car editing state
+  const [editingCar, setEditingCar] = useState<CarListing | null>(null);
+  const [updating, setUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  
+  // New car state
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [newCar, setNewCar] = useState({
+    title: '',
+    make: '',
+    model: '',
+    year: new Date().getFullYear(),
+    price: 0,
+    condition: 'used',
+    description: ''
   });
 
-  useEffect(() => {
-    fetchCars();
-  }, [user]);
-
-  const fetchCars = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('cars')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      setCars(data || []);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch cars",
-        variant: "destructive",
-      });
-    }
+  // Reset car form function
+  const resetCarForm = () => {
+    setNewCar({
+      title: '',
+      make: '',
+      model: '',
+      year: new Date().getFullYear(),
+      price: 0,
+      condition: 'used',
+      description: ''
+    });
   };
 
-  const updateCar = async (carId: string, car: any) => {
-    setUpdating(true);
-    setUpdateError(null);
+  // Handler for updating a car listing
+  const handleUpdateCar = async (id: string) => {
+    if (!editingCar) return;
     
     try {
+      setUpdating(true);
+      setUpdateError(null);
+      
       const updateData = {
-        title: car.title,
-        make: car.make, 
-        model: car.model,
-        year: car.year,
-        price: car.price,
-        description: car.description,
-        condition: car.condition
-      } as any;
+        title: editingCar.title,
+        make: editingCar.make,
+        model: editingCar.model,
+        year: editingCar.year,
+        price: editingCar.price,
+        description: editingCar.description,
+        condition: editingCar.condition
+      };
       
       const { error } = await supabase
         .from('cars')
-        .update(updateData)
-        .eq('id', carId as any);
-      
+        .update(updateData as any)
+        .eq('id', id);
+        
       if (error) {
         setUpdateError(error.message);
-        console.error("Error updating car:", error);
-        return false;
+        return;
       }
       
-      return true;
+      // Refresh the cars list
+      fetchCars();
+      
+      // Close the edit form
+      setEditingCar(null);
+      
+      toast({
+        title: "Car Updated",
+        description: "The car listing has been updated successfully",
+      });
     } catch (error: any) {
-      setUpdateError(error.message || "An error occurred during update");
-      console.error("Error updating car:", error);
-      return false;
+      setUpdateError(error.message);
     } finally {
       setUpdating(false);
     }
   };
 
-  const createCar = async (car: any) => {
-    setCreating(true);
-    setCreateError(null);
+  // Handler for creating a new car listing
+  const handleCreateCar = async () => {
+    if (!user) return;
     
     try {
+      setCreating(true);
+      setCreateError(null);
+      
       const carData = {
-        title: car.title,
-        make: car.make,
-        model: car.model,
-        year: car.year,
-        price: car.price,
-        description: car.description,
-        condition: car.condition,
-        user_id: adminUserId || user?.id
-      } as any;
+        ...newCar,
+        user_id: user.id
+      };
       
       const { error } = await supabase
         .from('cars')
-        .insert(carData);
-      
+        .insert(carData as any);
+        
       if (error) {
         setCreateError(error.message);
-        console.error("Error creating car:", error);
-        return false;
+        return;
       }
       
-      return true;
+      // Refresh the cars list
+      fetchCars();
+      
+      // Reset the form
+      resetCarForm();
+      
+      toast({
+        title: "Car Created",
+        description: "The new car listing has been created successfully",
+      });
     } catch (error: any) {
-      setCreateError(error.message || "An error occurred during creation");
-      console.error("Error creating car:", error);
-      return false;
+      setCreateError(error.message);
     } finally {
       setCreating(false);
     }
   };
 
-  const deleteCar = async (carId: string) => {
-    setDeleting(true);
-    
+  // Handler for deleting a car listing
+  const handleDeleteCar = async (id: string) => {
     try {
       const { error } = await supabase
         .from('cars')
         .delete()
-        .eq('id', carId as any);
-      
+        .eq('id', id);
+        
       if (error) {
-        console.error("Error deleting car:", error);
-        toast({
-          title: "Delete Failed",
-          description: error.message,
-          variant: "destructive",
-        });
-        return false;
-      }
-      
-      return true;
-    } catch (error: any) {
-      console.error("Error deleting car:", error);
-      toast({
-        title: "Delete Failed",
-        description: error.message || "An error occurred",
-        variant: "destructive",
-      });
-      return false;
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  const onSubmit = async (values: CarFormValues) => {
-    try {
-      if (!user?.id) {
         toast({
           title: "Error",
-          description: "You must be logged in to perform this action",
+          description: error.message,
           variant: "destructive",
         });
         return;
       }
-
-      if (selectedCar) {
-        const { error } = await updateCar(selectedCar.id, values);
-        if (error) throw error;
-        toast({ title: "Car Updated", description: "Car listing updated successfully" });
-      } else {
-        const { error } = await createCar(values);
-        if (error) throw error;
-        toast({ title: "Car Added", description: "New car listing added successfully" });
-      }
-
-      form.reset();
-      setIsAddDialogOpen(false);
-      setSelectedCar(null);
+      
+      // Refresh the cars list
       fetchCars();
-    } catch (error) {
+      
+      toast({
+        title: "Deleted",
+        description: "The car listing has been deleted successfully",
+      });
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to save car listing",
+        description: error.message,
         variant: "destructive",
       });
     }
   };
 
-  const handleDeleteCar = async (carId: string) => {
+  // Fetch car listings from Supabase
+  const fetchCars = async () => {
+    setLoadingCars(true);
     try {
-      const { error } = await deleteCar(carId);
-      if (error) throw error;
+      const { data, error } = await supabase
+        .from('cars')
+        .select('*')
+        .order('created_at', { ascending: false });
+        
+      if (error) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
       
-      toast({ 
-        title: "Car Deleted", 
-        description: "Car listing removed successfully" 
-      });
-      
-      fetchCars();
-    } catch (error) {
+      setCars(data || []);
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to delete car listing",
+        description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setLoadingCars(false);
     }
   };
 
-  const handleEditCar = (car: any) => {
-    setSelectedCar(car);
-    form.reset({
-      title: car.title,
-      make: car.make,
-      model: car.model,
-      year: car.year,
-      price: car.price,
-      description: car.description,
-      condition: car.condition,
-    });
-    setIsAddDialogOpen(true);
+  // Fetch user profiles from Supabase
+  const fetchUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+        
+      if (error) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setUsers(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingUsers(false);
+    }
   };
 
-  const renderCarForm = () => (
-    <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {selectedCar ? "Edit Car Listing" : "Add New Car Listing"}
-          </DialogTitle>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Title</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Car Title" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="make"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Make</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Car Make" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="model"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Model</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Car Model" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <FormField
-                control={form.control}
-                name="year"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Year</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="Year" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="price"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Price</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="Price" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="condition"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Condition</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Car Condition" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Car Description" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit">
-              {selectedCar ? "Update Listing" : "Add Listing"}
-            </Button>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  );
+  useEffect(() => {
+    if (!isLoading && !user) {
+      navigate("/auth?tab=login");
+    } else if (!isLoading && user && !isAdmin) {
+      navigate("/dashboard");
+    } else if (isAdmin) {
+      fetchCars();
+      fetchUsers();
+    }
+  }, [user, isAdmin, isLoading, navigate]);
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-6xl mx-auto">
+            <div className="h-12 bg-gray-200 animate-pulse rounded w-48 mb-8" />
+            <div className="h-64 bg-gray-200 animate-pulse rounded-lg" />
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-6xl mx-auto">
+            <h1 className="text-3xl font-bold mb-8">Unauthorized</h1>
+            <p>You do not have permission to view this page.</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold">Admin Panel</h1>
-            <p className="text-muted-foreground">
-              Manage users, listings, and platform statistics.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 mt-4 md:mt-0">
-            <ShieldAlert className="h-5 w-5 text-brand-orange" />
-            <span className="font-medium">Admin Access</span>
-          </div>
-        </div>
+        <div className="max-w-6xl mx-auto">
+          <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Users
-              </CardTitle>
-              <Users className="h-5 w-5 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{MOCK_STATS.totalUsers}</div>
-              <p className="text-xs text-muted-foreground">
-                +{MOCK_STATS.newUsersThisMonth} this month
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Listings
-              </CardTitle>
-              <Car className="h-5 w-5 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{MOCK_STATS.totalListings}</div>
-              <p className="text-xs text-muted-foreground">
-                {MOCK_STATS.activeListings} currently active
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Monthly Revenue
-              </CardTitle>
-              <DollarSign className="h-5 w-5 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${MOCK_STATS.revenue}</div>
-              <p className="text-xs text-muted-foreground">
-                From featured listings and services
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Admin Users
-              </CardTitle>
-              <ShieldAlert className="h-5 w-5 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {/* users.filter(user => user.isAdmin).length */}
-                0
-              </div>
-              <p className="text-xs text-muted-foreground">
-                With full administrative access
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+          <Tabs
+            defaultValue={activeTab}
+            onValueChange={setActiveTab}
+            className="space-y-4"
+          >
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="listings" className="flex items-center justify-center">
+                <Car className="h-4 w-4 mr-2" /> Car Listings
+              </TabsTrigger>
+              <TabsTrigger value="users" className="flex items-center justify-center">
+                <Users className="h-4 w-4 mr-2" /> User Management
+              </TabsTrigger>
+              <TabsTrigger value="messages" className="flex items-center justify-center">
+                <MessageSquare className="h-4 w-4 mr-2" /> Messages
+              </TabsTrigger>
+            </TabsList>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Monthly Listings</CardTitle>
-            </CardHeader>
-            <CardContent className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={MOCK_MONTHLY_DATA}
-                  margin={{
-                    top: 10,
-                    right: 30,
-                    left: 0,
-                    bottom: 0,
-                  }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="listings" fill="#2A3F54" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Revenue & New Users</CardTitle>
-            </CardHeader>
-            <CardContent className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={MOCK_MONTHLY_DATA}
-                  margin={{
-                    top: 10,
-                    right: 30,
-                    left: 0,
-                    bottom: 0,
-                  }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis yAxisId="left" />
-                  <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip />
-                  <Legend />
-                  <Line yAxisId="left" type="monotone" dataKey="users" stroke="#2A3F54" />
-                  <Line yAxisId="right" type="monotone" dataKey="revenue" stroke="#FF7E1F" />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-6 mt-8">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold">Manage Car Listings</h2>
-            <Button 
-              onClick={() => {
-                setSelectedCar(null);
-                form.reset({
-                  title: "",
-                  make: "",
-                  model: "",
-                  year: undefined,
-                  price: undefined,
-                  description: "",
-                  condition: "",
-                });
-                setIsAddDialogOpen(true);
-              }}
-              className="flex items-center gap-2"
-            >
-              <PlusCircle className="h-4 w-4" /> Add New Car
-            </Button>
-          </div>
-
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Make/Model</TableHead>
-                  <TableHead>Year</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cars.map((car) => (
-                  <TableRow key={car.id}>
-                    <TableCell>{car.title}</TableCell>
-                    <TableCell>{car.make} {car.model}</TableCell>
-                    <TableCell>{car.year}</TableCell>
-                    <TableCell>${car.price.toLocaleString()}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => handleEditCar(car)}
-                        >
-                          <Edit className="h-4 w-4 mr-2" /> Edit
-                        </Button>
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={() => handleDeleteCar(car.id)}
-                        >
-                          <Trash className="h-4 w-4 mr-2" /> Delete
-                        </Button>
+            <TabsContent value="listings">
+              <div className="bg-white shadow rounded-lg p-6">
+                <h2 className="text-xl font-semibold mb-4">Car Listings</h2>
+                {loadingCars ? (
+                  <div className="animate-pulse space-y-4">
+                    <div className="h-20 bg-gray-200 rounded" />
+                    <div className="h-20 bg-gray-200 rounded" />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {cars.map((car) => (
+                      <div
+                        key={car.id}
+                        className="border rounded-lg p-4 flex flex-col md:flex-row items-center md:items-start gap-4"
+                      >
+                        <div className="w-full md:w-40 h-32 bg-gray-200 rounded-lg overflow-hidden">
+                          {car.image_url ? (
+                            <img
+                              src={car.image_url}
+                              alt={car.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-400">
+                              No image
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-bold text-lg">{car.title}</h3>
+                          <p className="text-gray-500">
+                            {car.make} {car.model} {car.year}
+                          </p>
+                          <p className="font-bold text-brand-blue mt-2">
+                            ${car.price.toLocaleString()}
+                          </p>
+                          <div className="mt-4 flex gap-2">
+                            <button
+                              onClick={() => setEditingCar(car)}
+                              className="flex items-center gap-1 bg-brand-blue text-white px-3 py-1.5 rounded hover:bg-opacity-90"
+                            >
+                              <Edit className="h-4 w-4" /> Edit
+                            </button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <button
+                                  className="flex items-center gap-1 bg-red-500 text-white px-3 py-1.5 rounded hover:bg-red-600"
+                                >
+                                  <Trash2 className="h-4 w-4" /> Delete
+                                </button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Listing</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete this car listing? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteCar(car.id)}
+                                    disabled={updating}
+                                    className="bg-red-500 hover:bg-red-600"
+                                  >
+                                    {updating ? "Deleting..." : "Delete"}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </div>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Car Edit Form */}
+                {editingCar && (
+                  <Card className="mt-6">
+                    <CardHeader>
+                      <CardTitle>Edit Car Listing</CardTitle>
+                      <CardDescription>
+                        Edit the details of the selected car listing.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label
+                            htmlFor="title"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed"
+                          >
+                            Title
+                          </label>
+                          <Input
+                            id="title"
+                            value={editingCar.title}
+                            onChange={(e) =>
+                              setEditingCar({ ...editingCar, title: e.target.value })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label
+                            htmlFor="make"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed"
+                          >
+                            Make
+                          </label>
+                          <Input
+                            id="make"
+                            value={editingCar.make}
+                            onChange={(e) =>
+                              setEditingCar({ ...editingCar, make: e.target.value })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label
+                            htmlFor="model"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed"
+                          >
+                            Model
+                          </label>
+                          <Input
+                            id="model"
+                            value={editingCar.model}
+                            onChange={(e) =>
+                              setEditingCar({ ...editingCar, model: e.target.value })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label
+                            htmlFor="year"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed"
+                          >
+                            Year
+                          </label>
+                          <Input
+                            id="year"
+                            type="number"
+                            value={editingCar.year}
+                            onChange={(e) =>
+                              setEditingCar({
+                                ...editingCar,
+                                year: parseInt(e.target.value),
+                              })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label
+                            htmlFor="price"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed"
+                          >
+                            Price
+                          </label>
+                          <Input
+                            id="price"
+                            type="number"
+                            value={editingCar.price}
+                            onChange={(e) =>
+                              setEditingCar({
+                                ...editingCar,
+                                price: parseInt(e.target.value),
+                              })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label
+                            htmlFor="condition"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed"
+                          >
+                            Condition
+                          </label>
+                          <Input
+                            id="condition"
+                            value={editingCar.condition}
+                            onChange={(e) =>
+                              setEditingCar({ ...editingCar, condition: e.target.value })
+                            }
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="description"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed"
+                        >
+                          Description
+                        </label>
+                        <Textarea
+                          id="description"
+                          placeholder="Car Description"
+                          value={editingCar.description}
+                          onChange={(e) =>
+                            setEditingCar({ ...editingCar, description: e.target.value })
+                          }
+                        />
+                      </div>
+                    </CardContent>
+                    <CardFooter className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setEditingCar(null)}>
+                        Cancel
+                      </Button>
+                      <Button onClick={() => handleUpdateCar(editingCar.id)} disabled={updating}>
+                        {updating ? "Updating..." : "Update Car"}
+                      </Button>
+                      {updateError && (
+                        <p className="text-red-500 text-sm mt-1">{updateError}</p>
+                      )}
+                    </CardFooter>
+                  </Card>
+                )}
+                
+                {/* Car Creation Form */}
+                <Card className="mt-6">
+                  <CardHeader>
+                    <CardTitle>Create New Car Listing</CardTitle>
+                    <CardDescription>
+                      Create a new car listing to be displayed on the site.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label
+                          htmlFor="new-title"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed"
+                        >
+                          Title
+                        </label>
+                        <Input
+                          id="new-title"
+                          value={newCar.title}
+                          onChange={(e) =>
+                            setNewCar({ ...newCar, title: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="new-make"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed"
+                        >
+                          Make
+                        </label>
+                        <Input
+                          id="new-make"
+                          value={newCar.make}
+                          onChange={(e) =>
+                            setNewCar({ ...newCar, make: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="new-model"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed"
+                        >
+                          Model
+                        </label>
+                        <Input
+                          id="new-model"
+                          value={newCar.model}
+                          onChange={(e) =>
+                            setNewCar({ ...newCar, model: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="new-year"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed"
+                        >
+                          Year
+                        </label>
+                        <Input
+                          id="new-year"
+                          type="number"
+                          value={newCar.year}
+                          onChange={(e) =>
+                            setNewCar({
+                              ...newCar,
+                              year: parseInt(e.target.value),
+                            })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="new-price"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed"
+                        >
+                          Price
+                        </label>
+                        <Input
+                          id="new-price"
+                          type="number"
+                          value={newCar.price}
+                          onChange={(e) =>
+                            setNewCar({
+                              ...newCar,
+                              price: parseInt(e.target.value),
+                            })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="new-condition"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed"
+                        >
+                          Condition
+                        </label>
+                        <Input
+                          id="new-condition"
+                          value={newCar.condition}
+                          onChange={(e) =>
+                            setNewCar({ ...newCar, condition: e.target.value })
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="new-description"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed"
+                      >
+                        Description
+                      </label>
+                      <Textarea
+                        id="new-description"
+                        placeholder="Car Description"
+                        value={newCar.description}
+                        onChange={(e) =>
+                          setNewCar({ ...newCar, description: e.target.value })
+                        }
+                      />
+                    </div>
+                  </CardContent>
+                  <CardFooter className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={resetCarForm}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleCreateCar} disabled={creating}>
+                      {creating ? "Creating..." : "Create Car"}
+                    </Button>
+                    {createError && (
+                      <p className="text-red-500 text-sm mt-1">{createError}</p>
+                    )}
+                  </CardFooter>
+                </Card>
+              </div>
+            </TabsContent>
 
-        {renderCarForm()}
+            <TabsContent value="users">
+              <div className="bg-white shadow rounded-lg p-6">
+                <h2 className="text-xl font-semibold mb-4">User Management</h2>
+                {loadingUsers ? (
+                  <div className="animate-pulse space-y-4">
+                    <div className="h-16 bg-gray-200 rounded" />
+                    <div className="h-16 bg-gray-200 rounded" />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {users.map((user) => (
+                      <div
+                        key={user.id}
+                        className="border rounded-lg p-4 flex items-center gap-4"
+                      >
+                        <div className="h-12 w-12 bg-gray-200 rounded-full flex items-center justify-center">
+                          {user.full_name ? user.full_name.charAt(0) : "U"}
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-lg">{user.full_name || "N/A"}</h3>
+                          <p className="text-gray-500">{user.email}</p>
+                          <p className="text-gray-500">Role: {user.role}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="messages">
+              <div className="bg-white shadow rounded-lg p-6">
+                <h2 className="text-xl font-semibold mb-4">Messages</h2>
+                <p>This tab is under development.</p>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </Layout>
   );
