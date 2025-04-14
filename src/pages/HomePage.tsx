@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
 import CarCard, { CarListing } from "@/components/car/CarCard";
@@ -15,10 +15,11 @@ const HomePage = () => {
   const [filteredListings, setFilteredListings] = useState<CarListing[]>([]);
   const [loading, setLoading] = useState(true);
   const listingsRef = useRef<HTMLDivElement>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const navigate = useNavigate();
 
-  // Function to fetch car listings and profiles
-  const fetchListings = async () => {
+  // Memoized function to fetch car listings
+  const fetchListings = useCallback(async () => {
     try {
       console.log("Fetching car listings...");
       setLoading(true);
@@ -94,23 +95,25 @@ const HomePage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => {
-    // Initial fetch
-    fetchListings();
+  // Setup real-time subscription
+  const setupRealtimeSubscription = useCallback(() => {
+    // Remove existing channel if it exists
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
     
-    // Improved real-time subscription for immediate updates
-    // Create a channel to listen for changes to the cars table
+    // Create a new channel
     const channel = supabase
-      .channel('cars-changes')
+      .channel('cars-changes-' + Date.now()) // Use unique channel name
       .on('postgres_changes', { 
         event: '*',  // Listen for all events (INSERT, UPDATE, DELETE)
         schema: 'public', 
         table: 'cars' 
       }, (payload) => {
         console.log('Real-time update received:', payload);
-        
         // Immediately refetch all listings when any change occurs
         fetchListings();
       })
@@ -118,20 +121,30 @@ const HomePage = () => {
         console.log('Subscription status:', status);
         if (status !== 'SUBSCRIBED') {
           console.error('Failed to subscribe to car listings changes');
-          
-          // Attempt to reconnect in case of failure
-          setTimeout(() => {
-            console.log('Attempting to reconnect to real-time updates...');
-            channel.subscribe();
-          }, 3000);
         }
       });
-      
-    // Clean up subscription on unmount
+    
+    // Store channel reference
+    channelRef.current = channel;
+    
     return () => {
-      supabase.removeChannel(channel);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     };
-  }, []);
+  }, [fetchListings]);
+
+  useEffect(() => {
+    // Initial fetch
+    fetchListings();
+    
+    // Setup real-time subscription
+    const cleanup = setupRealtimeSubscription();
+    
+    // Clean up subscription on unmount
+    return cleanup;
+  }, [fetchListings, setupRealtimeSubscription]);
 
   const handleFilterChange = (filters: any) => {
     const { searchTerm, make, minYear, maxYear, priceRange } = filters;
