@@ -1,358 +1,285 @@
-
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, Car as CarIcon, Edit, Trash, User, ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
-import { CarListing } from "@/components/car/CarCard";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Car, MessageSquare, User } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import MessagesTab from "@/components/messages/MessagesTab";
+
+// Import any other required components
 
 const DashboardPage = () => {
-  const [userListings, setUserListings] = useState<CarListing[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const navigate = useNavigate();
+  const [profile, setProfile] = useState<any>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [userCars, setUserCars] = useState<any[]>([]);
+  const [carsLoading, setCarsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("listings");
 
-  // Check if user is authenticated
   useEffect(() => {
-    if (!user) {
-      toast({
-        variant: "destructive",
-        title: "Authentication required",
-        description: "You need to log in to view your dashboard.",
-      });
+    // Redirect if not logged in and done loading
+    if (!isLoading && !user) {
       navigate("/auth?tab=login");
+    } else if (user) {
+      fetchUserProfile();
+      fetchUserCars();
     }
-  }, [user, navigate, toast]);
+  }, [user, isLoading, navigate]);
 
-  // Fetch user's car listings
-  useEffect(() => {
-    const fetchUserListings = async () => {
-      if (!user) return;
-      
-      try {
-        setLoading(true);
-        
-        // Fetch user's car listings from Supabase
-        const { data, error } = await supabase
-          .from('cars')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-          
-        if (error) {
-          throw error;
-        }
-        
-        // Convert the data to match our CarListing type
-        const formattedListings = data.map(car => ({
-          id: car.id,
-          title: car.title,
-          make: car.make,
-          model: car.model,
-          year: car.year,
-          price: car.price,
-          description: car.description,
-          image: car.image_url,
-          location: "United States", // Default location
-          postedDate: new Date(car.created_at || new Date()),
-          userId: car.user_id,
-          condition: car.condition,
-          sellerName: userProfile?.full_name || 'Anonymous', // Add missing property
-          createdAt: new Date(car.created_at || new Date()) // Add missing property
-        }));
-        
-        setUserListings(formattedListings);
-      } catch (error) {
-        console.error("Error fetching user listings:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to load your car listings. Please refresh and try again.",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    // Fetch user profile
-    const fetchUserProfile = async () => {
-      if (!user) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-          
-        if (error) {
-          throw error;
-        }
-        
-        setUserProfile(data);
-      } catch (error) {
-        console.error("Error fetching user profile:", error);
-      }
-    };
-
-    fetchUserListings();
-    fetchUserProfile();
-  }, [user, toast]);
-
-  const handleDeleteListing = async (id: string) => {
-    if (!user) return;
-    
+  const fetchUserProfile = async () => {
     try {
-      // Delete the car listing from Supabase
-      const { error } = await supabase
-        .from('cars')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user.id);
-        
+      setProfileLoading(true);
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user?.id)
+        .single();
+
       if (error) {
-        throw error;
+        console.error("Error fetching profile:", error);
+      } else {
+        setProfile(data);
       }
-      
-      // Update local state
-      setUserListings(userListings.filter(car => car.id !== id));
-      
-      toast({
-        title: "Car listing deleted",
-        description: "Your car listing has been successfully deleted."
-      });
     } catch (error) {
-      console.error("Error deleting car listing:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to delete your car listing. Please try again.",
-      });
+      console.error("Error:", error);
+    } finally {
+      setProfileLoading(false);
     }
   };
+
+  const fetchUserCars = async () => {
+    try {
+      setCarsLoading(true);
+      const { data, error } = await supabase
+        .from("cars")
+        .select("*")
+        .eq("user_id", user?.id)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching cars:", error);
+      } else {
+        setUserCars(data || []);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+    } finally {
+      setCarsLoading(false);
+    }
+  };
+
+  // Check for unread messages
+  const [unreadCount, setUnreadCount] = useState(0);
+  
+  useEffect(() => {
+    const fetchUnreadMessages = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error, count } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact' })
+          .eq('recipient_id', user.id)
+          .eq('read', false);
+          
+        if (error) {
+          console.error("Error fetching unread messages:", error);
+        } else if (count !== null) {
+          setUnreadCount(count);
+        }
+      } catch (error) {
+        console.error("Error fetching unread messages:", error);
+      }
+    };
+    
+    fetchUnreadMessages();
+    
+    // Set up subscription for new messages
+    const channel = supabase
+      .channel('public:messages')
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'messages',
+        filter: `recipient_id=eq.${user?.id}`
+      }, (payload) => {
+        // Update unread count when a new message is received
+        setUnreadCount(prev => prev + 1);
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  if (isLoading || !user) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-6xl mx-auto">
+            <div className="h-12 bg-gray-200 animate-pulse rounded w-48 mb-8" />
+            <div className="h-64 bg-gray-200 animate-pulse rounded-lg" />
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground">
-              Manage your profile and car listings.
-            </p>
-          </div>
-          <Button asChild className="bg-brand-orange hover:bg-opacity-90">
-            <Link to="/post-car">
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Post a Car
-            </Link>
-          </Button>
-        </div>
+        <div className="max-w-6xl mx-auto">
+          <h1 className="text-3xl font-bold mb-8">My Dashboard</h1>
 
-        <Tabs defaultValue="listings">
-          <TabsList className="mb-6">
-            <TabsTrigger value="listings">My Listings</TabsTrigger>
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-          </TabsList>
+          <Tabs
+            defaultValue={activeTab}
+            onValueChange={setActiveTab}
+            className="space-y-4"
+          >
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="listings" className="flex items-center justify-center">
+                <Car className="h-4 w-4 mr-2" /> My Listings
+              </TabsTrigger>
+              <TabsTrigger value="messages" className="flex items-center justify-center">
+                <MessageSquare className="h-4 w-4 mr-2" /> 
+                Messages
+                {unreadCount > 0 && (
+                  <span className="ml-2 bg-red-500 text-white rounded-full px-2 py-0.5 text-xs">
+                    {unreadCount}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="profile" className="flex items-center justify-center">
+                <User className="h-4 w-4 mr-2" /> Profile
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="listings">
-            <h2 className="text-xl font-semibold mb-6">Your Car Listings</h2>
-            
-            {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {Array.from({ length: 3 }).map((_, index) => (
-                  <Card key={index} className="animate-pulse">
-                    <div className="h-40 bg-gray-200 rounded-t-lg" />
-                    <CardHeader>
-                      <div className="h-5 bg-gray-200 rounded w-2/3 mb-2" />
-                      <div className="h-4 bg-gray-200 rounded w-1/2" />
-                    </CardHeader>
-                    <CardFooter>
-                      <div className="h-10 bg-gray-200 rounded w-full" />
-                    </CardFooter>
-                  </Card>
-                ))}
-              </div>
-            ) : userListings.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {userListings.map((car) => (
-                  <Card key={car.id}>
-                    <div className="relative h-40 bg-gray-100 rounded-t-lg overflow-hidden">
-                      {car.image ? (
-                        <img 
-                          src={car.image} 
-                          alt={car.title} 
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex items-center justify-center h-full">
-                          <CarIcon className="h-12 w-12 text-gray-400" />
+            <TabsContent value="listings">
+              {/* Replace with your listings component */}
+              <div className="bg-white shadow rounded-lg p-6">
+                <h2 className="text-xl font-semibold mb-4">My Car Listings</h2>
+                {carsLoading ? (
+                  <div className="animate-pulse space-y-4">
+                    <div className="h-20 bg-gray-200 rounded" />
+                    <div className="h-20 bg-gray-200 rounded" />
+                  </div>
+                ) : userCars.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500 mb-4">You haven't posted any cars yet.</p>
+                    <button
+                      onClick={() => navigate("/post-car")}
+                      className="bg-brand-blue text-white px-4 py-2 rounded hover:bg-opacity-90"
+                    >
+                      Post a Car
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {userCars.map((car) => (
+                      <div
+                        key={car.id}
+                        className="border rounded-lg p-4 flex flex-col md:flex-row items-center md:items-start gap-4"
+                      >
+                        <div className="w-full md:w-40 h-32 bg-gray-200 rounded-lg overflow-hidden">
+                          {car.image_url ? (
+                            <img
+                              src={car.image_url}
+                              alt={car.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-400">
+                              No image
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    <CardHeader>
-                      <CardTitle className="line-clamp-1">{car.title}</CardTitle>
-                      <CardDescription>
-                        ${car.price.toLocaleString()} • {car.year}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardFooter className="flex justify-between">
-                      <Button variant="outline" asChild>
-                        <Link to={`/edit-car/${car.id}`}>
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit
-                        </Link>
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="destructive">
-                            <Trash className="h-4 w-4 mr-2" />
-                            Delete
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Car Listing</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete "{car.title}"? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={() => handleDeleteListing(car.id)}
-                              className="bg-red-500 hover:bg-red-600"
+                        <div className="flex-1">
+                          <h3 className="font-bold text-lg">{car.title}</h3>
+                          <p className="text-gray-500">
+                            {car.make} {car.model} {car.year}
+                          </p>
+                          <p className="font-bold text-brand-blue mt-2">
+                            ${car.price.toLocaleString()}
+                          </p>
+                          <div className="mt-4 flex gap-2">
+                            <button
+                              onClick={() => navigate(`/car/${car.id}`)}
+                              className="bg-gray-200 text-gray-800 px-3 py-1.5 rounded hover:bg-gray-300"
                             >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </CardFooter>
-                  </Card>
-                ))}
+                              View
+                            </button>
+                            <button
+                              onClick={() => navigate(`/edit-car/${car.id}`)}
+                              className="bg-brand-blue text-white px-3 py-1.5 rounded hover:bg-opacity-90"
+                            >
+                              Edit
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            ) : (
-              <Card className="w-full text-center p-8">
-                <CardHeader>
-                  <CardTitle>No listings yet</CardTitle>
-                  <CardDescription>
-                    You haven't posted any cars for sale yet.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button asChild>
-                    <Link to="/post-car">
-                      <PlusCircle className="h-4 w-4 mr-2" />
-                      Post Your First Car
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
+            </TabsContent>
 
-          <TabsContent value="profile">
-            <div className="max-w-3xl">
-              <h2 className="text-xl font-semibold mb-6">Your Profile</h2>
-              
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-4">
-                    <div className="h-16 w-16 bg-brand-blue text-white rounded-full flex items-center justify-center text-xl font-bold">
-                      {userProfile?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+            <TabsContent value="messages">
+              <MessagesTab />
+            </TabsContent>
+
+            <TabsContent value="profile">
+              {/* Profile info - can be expanded in a future task */}
+              <div className="bg-white shadow rounded-lg p-6">
+                <h2 className="text-xl font-semibold mb-4">My Profile</h2>
+                {profileLoading ? (
+                  <div className="animate-pulse space-y-4">
+                    <div className="h-12 bg-gray-200 rounded w-1/3" />
+                    <div className="h-12 bg-gray-200 rounded w-1/2" />
+                  </div>
+                ) : (
+                  <div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Full Name
+                        </label>
+                        <p className="mt-1 text-lg">{profile?.full_name || "Not set"}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Email
+                        </label>
+                        <p className="mt-1 text-lg">{user.email}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Username
+                        </label>
+                        <p className="mt-1 text-lg">{profile?.username || "Not set"}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Member Since
+                        </label>
+                        <p className="mt-1 text-lg">
+                          {new Date(user.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <CardTitle>{userProfile?.full_name || 'User'}</CardTitle>
-                      <CardDescription>
-                        Member since {new Date(user?.created_at || Date.now()).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                      </CardDescription>
+                    <div className="mt-6">
+                      <button className="bg-brand-blue text-white px-4 py-2 rounded hover:bg-opacity-90">
+                        Edit Profile
+                      </button>
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Email</p>
-                      <p>{user?.email}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Username</p>
-                      <p>{userProfile?.username || 'Not set'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Role</p>
-                      <p>{userProfile?.role || 'User'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Listings</p>
-                      <p>{userListings.length} active {userListings.length === 1 ? 'listing' : 'listings'}</p>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button variant="outline" className="w-full">
-                    <User className="h-4 w-4 mr-2" />
-                    Edit Profile
-                  </Button>
-                </CardFooter>
-              </Card>
-
-              <div className="mt-8">
-                <h3 className="text-lg font-semibold mb-4">Account Settings</h3>
-                <div className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Password & Security</CardTitle>
-                    </CardHeader>
-                    <CardFooter className="flex justify-between">
-                      <div className="text-sm text-muted-foreground">
-                        Last updated: {new Date(user?.updated_at || Date.now()).toLocaleDateString()}
-                      </div>
-                      <Button variant="ghost" size="sm">
-                        Manage
-                        <ArrowRight className="h-4 w-4 ml-2" />
-                      </Button>
-                    </CardFooter>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Notifications</CardTitle>
-                    </CardHeader>
-                    <CardFooter className="flex justify-between">
-                      <div className="text-sm text-muted-foreground">
-                        Receive email alerts for new messages
-                      </div>
-                      <Button variant="ghost" size="sm">
-                        Manage
-                        <ArrowRight className="h-4 w-4 ml-2" />
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                </div>
+                )}
               </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </Layout>
   );

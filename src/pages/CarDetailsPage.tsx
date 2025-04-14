@@ -1,12 +1,12 @@
 
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Calendar, DollarSign, MapPin, User, Mail, Phone, ArrowLeft, Share2 } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { CarListing } from "@/components/car/CarCard";
-import { mockListings, mockUsers } from "@/utils/mockData";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -29,15 +29,15 @@ import { toast } from "@/components/ui/use-toast";
 
 const CarDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [car, setCar] = useState<CarListing | null>(null);
   const [loading, setLoading] = useState(true);
   const [seller, setSeller] = useState<any>(null);
   const [similarCars, setSimilarCars] = useState<CarListing[]>([]);
-  const [contactName, setContactName] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
   const [contactMessage, setContactMessage] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchCarDetails = async () => {
@@ -138,27 +138,77 @@ const CarDetailsPage = () => {
     }
   }, [id]);
 
-  const handleContactSubmit = (e: React.FormEvent) => {
+  const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!user) {
+      toast({
+        title: "Login Required",
+        description: "Please log in to contact the seller",
+        variant: "destructive",
+      });
+      setDialogOpen(false);
+      navigate("/auth?tab=login");
+      return;
+    }
+
+    if (!contactMessage.trim()) {
+      toast({
+        title: "Message Required",
+        description: "Please enter a message for the seller",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!car || !seller) {
+      toast({
+        title: "Error",
+        description: "Car or seller information is missing",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSendingMessage(true);
     
-    // Simulate sending a message
-    setTimeout(() => {
-      setSendingMessage(false);
+    try {
+      // Insert message into database
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          car_id: car.id,
+          sender_id: user.id,
+          recipient_id: seller.id,
+          message: contactMessage,
+        });
+
+      if (error) {
+        console.error("Error sending message:", error);
+        toast({
+          title: "Message Failed",
+          description: "There was an error sending your message. Please try again.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Message Sent!",
+          description: "Your message has been sent to the seller.",
+          duration: 5000,
+        });
+        setContactMessage("");
+        setDialogOpen(false);
+      }
+    } catch (error) {
+      console.error("Error in message submission:", error);
       toast({
-        title: "Message Sent!",
-        description: "Your message has been sent to the seller.",
-        duration: 5000,
+        title: "Message Failed",
+        description: "There was an error sending your message. Please try again.",
+        variant: "destructive",
       });
-      setContactName("");
-      setContactEmail("");
-      setContactPhone("");
-      setContactMessage("");
-      
-      // Close the dialog programmatically
-      const closeButton = document.querySelector('[data-dialog-close]') as HTMLButtonElement;
-      if (closeButton) closeButton.click();
-    }, 1000);
+    } finally {
+      setSendingMessage(false);
+    }
   };
 
   if (loading) {
@@ -346,7 +396,7 @@ const CarDetailsPage = () => {
                   </div>
                 </div>
                 
-                <Dialog>
+                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                   <DialogTrigger asChild>
                     <Button className="w-full bg-brand-orange hover:bg-opacity-90 mb-3">
                       Contact Seller
@@ -360,42 +410,6 @@ const CarDetailsPage = () => {
                       </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleContactSubmit} className="space-y-4">
-                      <div>
-                        <label htmlFor="name" className="block text-sm font-medium mb-1">
-                          Your Name
-                        </label>
-                        <Input 
-                          id="name" 
-                          value={contactName} 
-                          onChange={(e) => setContactName(e.target.value)} 
-                          placeholder="John Doe" 
-                          required 
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="email" className="block text-sm font-medium mb-1">
-                          Your Email
-                        </label>
-                        <Input 
-                          id="email" 
-                          type="email" 
-                          value={contactEmail} 
-                          onChange={(e) => setContactEmail(e.target.value)} 
-                          placeholder="john@example.com" 
-                          required 
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="phone" className="block text-sm font-medium mb-1">
-                          Your Phone Number
-                        </label>
-                        <Input 
-                          id="phone" 
-                          value={contactPhone} 
-                          onChange={(e) => setContactPhone(e.target.value)} 
-                          placeholder="(555) 123-4567" 
-                        />
-                      </div>
                       <div>
                         <label htmlFor="message" className="block text-sm font-medium mb-1">
                           Message

@@ -32,11 +32,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             title: 'Logged in',
             description: 'You have been logged in successfully',
           });
+          
+          // Enable realtime subscriptions for messages after login
+          if (session?.user) {
+            supabase
+              .from('messages')
+              .on('INSERT', (payload) => {
+                if (payload.new && payload.new.recipient_id === session.user.id) {
+                  toast({
+                    title: 'New Message',
+                    description: 'You have received a new message',
+                  });
+                }
+              })
+              .subscribe();
+          }
         } else if (event === 'SIGNED_OUT') {
           toast({
             title: 'Logged out',
             description: 'You have been logged out successfully',
           });
+          
+          // Disable all realtime subscriptions
+          supabase.removeAllChannels();
         }
       }
     );
@@ -46,6 +64,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       setIsLoading(false);
+      
+      // Enable realtime subscriptions for messages if already logged in
+      if (session?.user) {
+        supabase
+          .from('messages')
+          .on('INSERT', (payload) => {
+            if (payload.new && payload.new.recipient_id === session.user.id) {
+              toast({
+                title: 'New Message',
+                description: 'You have received a new message',
+              });
+            }
+          })
+          .subscribe();
+      }
     });
 
     return () => subscription.unsubscribe();

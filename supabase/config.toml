@@ -1,1 +1,8 @@
+
 project_id = "pcyuwktvexjrzuiusilt"
+
+[realtime]
+enabled = true
+
+[realtime.tables]
+public.messages = true
