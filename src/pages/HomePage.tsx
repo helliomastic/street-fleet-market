@@ -1,6 +1,6 @@
 
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
 import CarCard, { CarListing } from "@/components/car/CarCard";
 import SearchFilters from "@/components/car/SearchFilters";
@@ -11,6 +11,8 @@ const HomePage = () => {
   const [listings, setListings] = useState<CarListing[]>([]);
   const [filteredListings, setFilteredListings] = useState<CarListing[]>([]);
   const [loading, setLoading] = useState(true);
+  const listingsRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Fetch car listings from Supabase
@@ -84,6 +86,14 @@ const HomePage = () => {
     setFilteredListings(filtered);
   };
 
+  const scrollToListings = () => {
+    listingsRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const goToSellCar = () => {
+    navigate('/post-car');
+  };
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
@@ -98,10 +108,16 @@ const HomePage = () => {
               a sleek sedan, or a powerful truck, you'll find it here.
             </p>
             <div className="flex gap-4">
-              <button className="px-6 py-3 bg-brand-orange rounded-lg font-medium hover:bg-opacity-90 transition-colors">
+              <button 
+                className="px-6 py-3 bg-brand-orange rounded-lg font-medium hover:bg-opacity-90 transition-colors"
+                onClick={scrollToListings}
+              >
                 Browse Cars
               </button>
-              <button className="px-6 py-3 bg-transparent border border-white rounded-lg font-medium hover:bg-white hover:text-brand-blue transition-colors">
+              <button 
+                className="px-6 py-3 bg-transparent border border-white rounded-lg font-medium hover:bg-white hover:text-brand-blue transition-colors"
+                onClick={goToSellCar}
+              >
                 Sell Your Car
               </button>
             </div>
@@ -112,44 +128,46 @@ const HomePage = () => {
         <SearchFilters onFilterChange={handleFilterChange} />
 
         {/* Results */}
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {Array.from({ length: 8 }).map((_, index) => (
-              <div key={index} className="car-card animate-pulse">
-                <div className="h-48 bg-gray-200" />
-                <div className="p-4">
-                  <div className="h-6 bg-gray-200 rounded mb-2" />
-                  <div className="h-4 bg-gray-200 rounded mb-4 w-2/3" />
-                  <div className="flex justify-between items-center">
-                    <div className="h-6 bg-gray-200 rounded w-1/3" />
-                    <div className="h-8 bg-gray-200 rounded w-1/4" />
+        <div ref={listingsRef}>
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <div key={index} className="car-card animate-pulse">
+                  <div className="h-48 bg-gray-200" />
+                  <div className="p-4">
+                    <div className="h-6 bg-gray-200 rounded mb-2" />
+                    <div className="h-4 bg-gray-200 rounded mb-4 w-2/3" />
+                    <div className="flex justify-between items-center">
+                      <div className="h-6 bg-gray-200 rounded w-1/3" />
+                      <div className="h-8 bg-gray-200 rounded w-1/4" />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : filteredListings.length > 0 ? (
-          <>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">
-                {filteredListings.length} {filteredListings.length === 1 ? "Car" : "Cars"} Available
-              </h2>
-              <div className="text-sm text-gray-500">
-                Sorted by: Latest
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {filteredListings.map((car) => (
-                <CarCard key={car.id} car={car} />
               ))}
             </div>
-          </>
-        ) : (
-          <div className="text-center py-12">
-            <h3 className="text-xl font-semibold mb-2">No cars match your search</h3>
-            <p className="text-gray-500">Try adjusting your filters or search term</p>
-          </div>
-        )}
+          ) : filteredListings.length > 0 ? (
+            <>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold">
+                  {filteredListings.length} {filteredListings.length === 1 ? "Car" : "Cars"} Available
+                </h2>
+                <div className="text-sm text-gray-500">
+                  Sorted by: Latest
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {filteredListings.map((car) => (
+                  <CarCard key={car.id} car={car} />
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-12">
+              <h3 className="text-xl font-semibold mb-2">No cars match your search</h3>
+              <p className="text-gray-500">Try adjusting your filters or search term</p>
+            </div>
+          )}
+        </div>
       </div>
     </Layout>
   );

@@ -126,7 +126,7 @@ const Navbar = () => {
                 <Button variant="outline" asChild className="text-white border-white hover:bg-white hover:text-brand-blue">
                   <Link to="/auth?tab=signup">Sign Up</Link>
                 </Button>
-                <Button asChild className="bg-brand-orange hover:bg-opacity-90">
+                <Button asChild className="bg-purple-600 hover:bg-purple-700">
                   <Link to="/auth?tab=login">Log In</Link>
                 </Button>
               </div>
@@ -173,7 +173,7 @@ const Navbar = () => {
                   <Link to="/auth?tab=login" className="hover:text-brand-orange transition-colors">
                     Login
                   </Link>
-                  <Link to="/auth?tab=signup" className="hover:text-brand-orange transition-colors">
+                  <Link to="/auth?tab=signup" className="hover:text-purple-600 hover:text-purple-700 transition-colors">
                     Sign Up
                   </Link>
                 </>
