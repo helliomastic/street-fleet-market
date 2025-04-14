@@ -18,6 +18,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { User } from '@supabase/supabase-js';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
