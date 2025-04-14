@@ -183,7 +183,7 @@ export const CarListingComponent = ({ cars, loadingCars, fetchCars }: CarListing
       console.log("Successfully deleted all messages");
       
       // Add a small delay to ensure database consistency
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Now that all messages are deleted, delete all cars
       const { error } = await supabase

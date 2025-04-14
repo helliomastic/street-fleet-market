@@ -89,43 +89,25 @@ const DashboardPage = () => {
       
       console.log("Deleting car with ID:", carId);
       
-      const { data: messageCheck, error: checkError } = await supabase
+      const { error: messagesError } = await supabase
         .from('messages')
-        .select('id')
+        .delete()
         .eq('car_id', carId);
         
-      if (checkError) {
-        console.error("Error checking for messages:", checkError);
+      if (messagesError) {
+        console.error("Error deleting related messages:", messagesError);
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Failed to check for messages: " + checkError.message
+          description: "Failed to delete related messages: " + messagesError.message
         });
         setDeletingCarId(null);
         return;
       }
       
-      console.log(`Found ${messageCheck?.length || 0} messages to delete for car ${carId}`);
+      console.log("Successfully deleted messages for car:", carId);
       
-      if (messageCheck && messageCheck.length > 0) {
-        const { error: messagesError } = await supabase
-          .from('messages')
-          .delete()
-          .eq('car_id', carId);
-          
-        if (messagesError) {
-          console.error("Error deleting related messages:", messagesError);
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to delete related messages: " + messagesError.message
-          });
-          setDeletingCarId(null);
-          return;
-        }
-        
-        console.log("Successfully deleted messages for car:", carId);
-      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       const { error } = await supabase
         .from('cars')

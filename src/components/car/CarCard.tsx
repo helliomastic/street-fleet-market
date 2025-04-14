@@ -1,4 +1,3 @@
-
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
@@ -119,6 +118,9 @@ const CarCard = ({ car }: CarCardProps) => {
         
         console.log("Successfully deleted messages for car:", car.id);
       }
+      
+      // Add a small delay to ensure database consistency
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // After messages are deleted (or if there were none), delete the car
       console.log("Now deleting car with ID:", car.id);

@@ -48,7 +48,7 @@ export const CarListItem = ({ car, onEdit, fetchCars }: CarListItemProps) => {
       console.log("Successfully deleted messages for car:", id);
       
       // Add a small delay to ensure database consistency
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Now that messages are deleted, delete the car
       const { error } = await supabase
