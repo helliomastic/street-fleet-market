@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 interface CarCreateFormProps {
   creating: boolean;
   createError: string | null;
-  handleCreateCar: (userId: string) => Promise<void>;
+  handleCreateCar: (userId: string, newCar: any) => Promise<void>;
 }
 
 export const CarCreateForm = ({ 
@@ -46,6 +46,11 @@ export const CarCreateForm = ({
       condition: 'used',
       description: ''
     });
+  };
+
+  const handleSubmit = () => {
+    handleCreateCar(user?.id || '', newCar);
+    resetCarForm();
   };
 
   return (
@@ -178,7 +183,7 @@ export const CarCreateForm = ({
         <Button variant="outline" onClick={resetCarForm}>
           Cancel
         </Button>
-        <Button onClick={() => handleCreateCar(user?.id || '')} disabled={creating}>
+        <Button onClick={handleSubmit} disabled={creating}>
           {creating ? "Creating..." : "Create Car"}
         </Button>
         {createError && (

@@ -75,21 +75,39 @@ export const CarListingComponent = ({ cars, loadingCars, fetchCars }: CarListing
     }
   };
 
-  const handleCreateCar = async (userId: string) => {
+  const handleCreateCar = async (userId: string, newCarData: any) => {
     if (!userId) return;
     
     try {
       setCreating(true);
       setCreateError(null);
       
-      // Get the car data from the CarCreateForm component
+      // Get user data
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) {
         setCreateError("User not authenticated");
         return;
       }
       
-      // The form will call this function with the user ID and handle the newCar state internally
+      // Insert the new car
+      const { error } = await supabase
+        .from('cars')
+        .insert({
+          title: newCarData.title,
+          make: newCarData.make,
+          model: newCarData.model,
+          year: newCarData.year,
+          price: newCarData.price,
+          condition: newCarData.condition,
+          description: newCarData.description,
+          user_id: userId,
+        });
+        
+      if (error) {
+        setCreateError(error.message);
+        return;
+      }
+      
       toast({
         title: "Car Created",
         description: "The new car listing has been created successfully",
