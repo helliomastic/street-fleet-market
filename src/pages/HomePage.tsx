@@ -21,10 +21,17 @@ const HomePage = () => {
         console.log("Fetching car listings...");
         setLoading(true);
         
-        // Fetch car listings from Supabase first, then fetch profiles separately
+        // Fetch car listings from Supabase with their profile data using a join
         const { data: carsData, error: carsError } = await supabase
           .from('cars')
-          .select('*')
+          .select(`
+            *,
+            profiles:user_id (
+              id, 
+              full_name, 
+              username
+            )
+          `)
           .order('created_at', { ascending: false });
           
         if (carsError) {
@@ -33,28 +40,9 @@ const HomePage = () => {
         
         console.log("Fetched cars data:", carsData);
         
-        // Get all user IDs from cars to fetch their profiles
-        const userIds = [...new Set(carsData.map(car => car.user_id))];
-        
-        // Fetch profiles for the user IDs
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, full_name, username')
-          .in('id', userIds);
-          
-        if (profilesError) {
-          console.error("Error fetching profiles:", profilesError);
-        }
-        
-        // Create a map of user IDs to profile data for easy lookup
-        const profilesMap = (profilesData || []).reduce((map, profile) => {
-          map[profile.id] = profile;
-          return map;
-        }, {} as Record<string, any>);
-        
         // Convert the data to match our CarListing type
         const formattedListings: CarListing[] = carsData.map(car => {
-          const profile = profilesMap[car.user_id] || {};
+          const profile = car.profiles || {};
           return {
             id: car.id,
             title: car.title,
@@ -91,33 +79,15 @@ const HomePage = () => {
     fetchListings();
     
     // Set up realtime subscription for changes to the cars table
-    const carsSubscription = supabase
+    const channel = supabase
       .channel('public:cars')
       .on('postgres_changes', { 
-        event: 'INSERT', 
+        event: '*', 
         schema: 'public', 
         table: 'cars' 
       }, (payload) => {
-        console.log('New car listing added!', payload);
-        // Refetch listings when a new car is added
-        fetchListings();
-      })
-      .on('postgres_changes', { 
-        event: 'DELETE', 
-        schema: 'public', 
-        table: 'cars' 
-      }, (payload) => {
-        console.log('Car listing deleted!', payload);
-        // Refetch listings when a car is deleted
-        fetchListings();
-      })
-      .on('postgres_changes', { 
-        event: 'UPDATE', 
-        schema: 'public', 
-        table: 'cars' 
-      }, (payload) => {
-        console.log('Car listing updated!', payload);
-        // Refetch listings when a car is updated
+        console.log('Car listing changed!', payload);
+        // Refetch all listings when any change occurs
         fetchListings();
       })
       .subscribe((status) => {
@@ -129,7 +99,7 @@ const HomePage = () => {
       
     // Clean up subscription on unmount
     return () => {
-      supabase.removeChannel(carsSubscription);
+      supabase.removeChannel(channel);
     };
   }, []);
 
