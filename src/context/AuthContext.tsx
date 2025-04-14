@@ -9,6 +9,7 @@ type AuthContextType = {
   session: Session | null;
   isLoading: boolean;
   signOut: () => Promise<void>;
+  isAdmin: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -17,6 +18,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -33,9 +35,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             description: 'You have been logged in successfully',
           });
           
-          // Enable realtime subscriptions for messages after login
+          // Check if user is admin
           if (session?.user) {
-            // Use the channel API for realtime subscriptions
+            checkIsAdmin(session.user.id);
+            
+            // Enable realtime subscriptions for messages after login
             const channel = supabase
               .channel('public:messages')
               .on('postgres_changes', {
@@ -57,6 +61,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             description: 'You have been logged out successfully',
           });
           
+          setIsAdmin(false);
+          
           // Disable all realtime subscriptions
           supabase.removeAllChannels();
         }
@@ -69,9 +75,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       setIsLoading(false);
       
-      // Enable realtime subscriptions for messages if already logged in
+      // Check if user is admin and enable realtime for messages if logged in
       if (session?.user) {
-        // Use the channel API for realtime subscriptions
+        checkIsAdmin(session.user.id);
+        
         const channel = supabase
           .channel('public:messages')
           .on('postgres_changes', {
@@ -92,12 +99,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, [toast]);
 
+  const checkIsAdmin = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role, is_admin')
+        .eq('id', userId)
+        .single();
+      
+      if (error) {
+        console.error('Error checking admin status:', error);
+        return;
+      }
+      
+      setIsAdmin(data?.role === 'admin' || !!data?.is_admin);
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+    }
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, signOut }}>
+    <AuthContext.Provider value={{ user, session, isLoading, signOut, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );

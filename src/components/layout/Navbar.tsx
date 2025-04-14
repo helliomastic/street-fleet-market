@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
-  Menu, X, Car, User, LogOut, Settings, PlusSquare
+  Menu, X, Car, User, LogOut, Settings, PlusSquare, MessageSquare
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/components/ui/use-toast";
@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -22,21 +23,55 @@ const Navbar = () => {
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isLoading, signOut } = useAuth();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { user, isLoading, signOut, isAdmin } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Close mobile menu when route changes
   useEffect(() => {
     setIsMenuOpen(false);
   }, [location.pathname]);
 
-  // Check if user has admin role (for demo purposes)
+  // Check for unread messages
   useEffect(() => {
-    if (user) {
-      // In a real app, would check user's role in the profiles table
-      // For now, just hardcode for demo
-      setIsAdmin(false);
-    }
+    if (!user) return;
+    
+    const fetchUnreadMessages = async () => {
+      try {
+        const { data, error, count } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact' })
+          .eq('recipient_id', user.id)
+          .eq('read', false);
+          
+        if (error) {
+          console.error("Error fetching unread messages:", error);
+        } else if (count !== null) {
+          setUnreadCount(count);
+        }
+      } catch (error) {
+        console.error("Error fetching unread messages:", error);
+      }
+    };
+    
+    fetchUnreadMessages();
+    
+    // Set up subscription for new messages
+    const channel = supabase
+      .channel('public:messages')
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'messages',
+        filter: `recipient_id=eq.${user.id}`
+      }, (payload) => {
+        // Update unread count when a new message is received
+        setUnreadCount(prev => prev + 1);
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const handleLogout = async () => {
@@ -62,8 +97,13 @@ const Navbar = () => {
               </Link>
               {user && (
                 <>
-                  <Link to="/dashboard" className="hover:text-brand-orange transition-colors">
+                  <Link to="/dashboard" className="hover:text-brand-orange transition-colors flex items-center">
                     Dashboard
+                    {unreadCount > 0 && (
+                      <span className="ml-2 bg-red-500 text-white rounded-full px-2 py-0.5 text-xs">
+                        {unreadCount}
+                      </span>
+                    )}
                   </Link>
                   <Link to="/post-car" className="hover:text-brand-orange transition-colors">
                     Post a Car
@@ -87,6 +127,11 @@ const Navbar = () => {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative rounded-full h-8 w-8 bg-brand-orange">
                     <span className="font-bold">{user.user_metadata.full_name?.charAt(0) || user.email?.charAt(0)}</span>
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full px-1.5 py-0.5 text-xs">
+                        {unreadCount}
+                      </span>
+                    )}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
@@ -95,9 +140,16 @@ const Navbar = () => {
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link to="/dashboard" className="cursor-pointer flex items-center">
-                      <User className="mr-2 h-4 w-4" />
-                      <span>Dashboard</span>
+                    <Link to="/dashboard" className="cursor-pointer flex items-center justify-between">
+                      <div className="flex items-center">
+                        <User className="mr-2 h-4 w-4" />
+                        <span>Dashboard</span>
+                      </div>
+                      {unreadCount > 0 && (
+                        <span className="bg-red-500 text-white rounded-full px-2 py-0.5 text-xs">
+                          {unreadCount}
+                        </span>
+                      )}
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
@@ -155,8 +207,13 @@ const Navbar = () => {
               </Link>
               {user && (
                 <>
-                  <Link to="/dashboard" className="hover:text-brand-orange transition-colors">
+                  <Link to="/dashboard" className="hover:text-brand-orange transition-colors flex items-center">
                     Dashboard
+                    {unreadCount > 0 && (
+                      <span className="ml-2 bg-red-500 text-white rounded-full px-2 py-0.5 text-xs">
+                        {unreadCount}
+                      </span>
+                    )}
                   </Link>
                   <Link to="/post-car" className="hover:text-brand-orange transition-colors">
                     Post a Car
