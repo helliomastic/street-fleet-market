@@ -45,6 +45,14 @@ const HomePage = () => {
         const formattedListings: CarListing[] = carsData.map(car => {
           // Handle potential undefined profiles or empty object by providing defaults
           const profile = car.profiles || {};
+          
+          // Explicitly type the properties with safe fallbacks
+          const sellerFullName = typeof profile === 'object' && profile !== null && 'full_name' in profile ? 
+            profile.full_name as string | null : null;
+            
+          const sellerUsername = typeof profile === 'object' && profile !== null && 'username' in profile ? 
+            profile.username as string | null : null;
+            
           return {
             id: car.id,
             title: car.title,
@@ -58,7 +66,7 @@ const HomePage = () => {
             postedDate: new Date(car.created_at || new Date()),
             userId: car.user_id,
             condition: car.condition,
-            sellerName: profile.full_name || profile.username || 'Anonymous',
+            sellerName: sellerFullName || sellerUsername || 'Anonymous',
             createdAt: new Date(car.created_at || new Date()),
           };
         });
