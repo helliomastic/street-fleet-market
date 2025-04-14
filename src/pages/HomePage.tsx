@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
@@ -42,6 +43,7 @@ const HomePage = () => {
         
         // Convert the data to match our CarListing type
         const formattedListings: CarListing[] = carsData.map(car => {
+          // Handle potential undefined profiles or empty object by providing defaults
           const profile = car.profiles || {};
           return {
             id: car.id,
