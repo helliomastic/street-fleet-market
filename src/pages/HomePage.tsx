@@ -20,36 +20,55 @@ const HomePage = () => {
       try {
         setLoading(true);
         
-        // Fetch car listings from Supabase with a join to profiles
-        const { data, error } = await supabase
+        // Fetch car listings from Supabase first, then fetch profiles separately
+        const { data: carsData, error: carsError } = await supabase
           .from('cars')
-          .select(`
-            *,
-            profiles:user_id(full_name, username)
-          `)
+          .select('*')
           .order('created_at', { ascending: false });
           
-        if (error) {
-          throw error;
+        if (carsError) {
+          throw carsError;
         }
         
+        // Get all user IDs from cars to fetch their profiles
+        const userIds = [...new Set(carsData.map(car => car.user_id))];
+        
+        // Fetch profiles for the user IDs
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, full_name, username')
+          .in('id', userIds);
+          
+        if (profilesError) {
+          console.error("Error fetching profiles:", profilesError);
+        }
+        
+        // Create a map of user IDs to profile data for easy lookup
+        const profilesMap = (profilesData || []).reduce((map, profile) => {
+          map[profile.id] = profile;
+          return map;
+        }, {} as Record<string, any>);
+        
         // Convert the data to match our CarListing type
-        const formattedListings: CarListing[] = data.map(car => ({
-          id: car.id,
-          title: car.title,
-          make: car.make,
-          model: car.model,
-          year: car.year,
-          price: car.price,
-          description: car.description,
-          image: car.image_url,
-          location: "United States", // Default location
-          postedDate: new Date(car.created_at || new Date()),
-          userId: car.user_id,
-          condition: car.condition,
-          sellerName: car.profiles?.full_name || car.profiles?.username || 'Anonymous',
-          createdAt: new Date(car.created_at || new Date()),
-        }));
+        const formattedListings: CarListing[] = carsData.map(car => {
+          const profile = profilesMap[car.user_id] || {};
+          return {
+            id: car.id,
+            title: car.title,
+            make: car.make,
+            model: car.model,
+            year: car.year,
+            price: car.price,
+            description: car.description,
+            image: car.image_url,
+            location: "United States", // Default location
+            postedDate: new Date(car.created_at || new Date()),
+            userId: car.user_id,
+            condition: car.condition,
+            sellerName: profile.full_name || profile.username || 'Anonymous',
+            createdAt: new Date(car.created_at || new Date()),
+          };
+        });
         
         setListings(formattedListings);
         setFilteredListings(formattedListings);
