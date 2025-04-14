@@ -1,8 +1,10 @@
 
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
 import CarCard, { CarListing } from "@/components/car/CarCard";
 import SearchFilters from "@/components/car/SearchFilters";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 
 const HomePage = () => {
