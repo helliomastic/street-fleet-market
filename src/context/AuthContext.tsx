@@ -120,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: existingProfile, error: checkError } = await supabase
         .from('profiles')
         .select('id')
-        .eq('id', user.id)
+        .eq('id', user.id as any)
         .single();
       
       if (checkError && !existingProfile) {
@@ -128,14 +128,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const fullName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
         const username = user.email?.split('@')[0] || `user_${Math.random().toString(36).substring(2, 10)}`;
         
+        const profileData = {
+          id: user.id,
+          full_name: fullName,
+          username: username,
+          role: 'user'
+        } as any;
+        
         const { error: insertError } = await supabase
           .from('profiles')
-          .insert({
-            id: user.id,
-            full_name: fullName,
-            username: username,
-            role: 'user'
-          });
+          .insert(profileData);
         
         if (insertError) {
           console.error('Error creating profile:', insertError);
@@ -151,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from('profiles')
         .select('role, is_admin')
-        .eq('id', userId)
+        .eq('id', userId as any)
         .single();
       
       if (error) {

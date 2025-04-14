@@ -11,7 +11,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
+  DropdownMenuSeparator,.
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/context/AuthContext";
@@ -40,8 +40,8 @@ const Navbar = () => {
         const { data, error, count } = await supabase
           .from('messages')
           .select('*', { count: 'exact' })
-          .eq('recipient_id', user.id)
-          .eq('read', false);
+          .eq('recipient_id', user.id as any)
+          .eq('read', false as any);
           
         if (error) {
           console.error("Error fetching unread messages:", error);

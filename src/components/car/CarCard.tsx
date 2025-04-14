@@ -82,8 +82,8 @@ const CarCard = ({ car }: CarCardProps) => {
       const { error } = await supabase
         .from('cars')
         .delete()
-        .eq('id', car.id)
-        .eq('user_id', user.id);
+        .eq('id', car.id as any)
+        .eq('user_id', car.userId as any);
         
       if (error) throw error;
       

@@ -76,14 +76,13 @@ const MessagesTab = () => {
           created_at,
           car:cars(title, make, model, year)
         `)
-        .eq('recipient_id', user?.id)
-        .order('created_at', { ascending: false });
+        .eq('recipient_id', user?.id as any);
 
       if (receivedError) {
         console.error("Error fetching received messages:", receivedError);
-      } else {
+      } else if (receivedData) {
         // Now get profile data for each message sender
-        const receivedWithProfiles = await Promise.all((receivedData || []).map(async (msg) => {
+        const receivedWithProfiles = await Promise.all((receivedData).map(async (msg) => {
           // Get sender profile
           const { data: senderData } = await supabase
             .from('profiles')
@@ -102,10 +101,10 @@ const MessagesTab = () => {
             ...msg,
             sender_profile: senderData || { full_name: 'Unknown User' },
             recipient_profile: recipientData || { full_name: 'Unknown User' }
-          };
+          } as Message;
         }));
         
-        setReceivedMessages(receivedWithProfiles as unknown as Message[]);
+        setReceivedMessages(receivedWithProfiles as Message[]);
       }
 
       // Then, fetch sent messages
@@ -121,14 +120,13 @@ const MessagesTab = () => {
           created_at,
           car:cars(title, make, model, year)
         `)
-        .eq('sender_id', user?.id)
-        .order('created_at', { ascending: false });
+        .eq('sender_id', user?.id as any);
 
       if (sentError) {
         console.error("Error fetching sent messages:", sentError);
-      } else {
+      } else if (sentData) {
         // Now get profile data for each message recipient
-        const sentWithProfiles = await Promise.all((sentData || []).map(async (msg) => {
+        const sentWithProfiles = await Promise.all((sentData).map(async (msg) => {
           // Get sender profile (should be the current user)
           const { data: senderData } = await supabase
             .from('profiles')
@@ -147,10 +145,10 @@ const MessagesTab = () => {
             ...msg,
             sender_profile: senderData || { full_name: 'Unknown User' },
             recipient_profile: recipientData || { full_name: 'Unknown User' }
-          };
+          } as Message;
         }));
         
-        setSentMessages(sentWithProfiles as unknown as Message[]);
+        setSentMessages(sentWithProfiles as Message[]);
       }
     } catch (error) {
       console.error("Error fetching messages:", error);
@@ -170,8 +168,8 @@ const MessagesTab = () => {
     try {
       const { error } = await supabase
         .from('messages')
-        .update({ read: true })
-        .eq('id', message.id);
+        .update({ read: true } as any)
+        .eq('id', message.id as any);
 
       if (error) {
         console.error("Error marking message as read:", error);
@@ -203,16 +201,18 @@ const MessagesTab = () => {
 
     setSendingReply(true);
     try {
+      const messageData = {
+        car_id: selectedMessage.car_id,
+        sender_id: user.id,
+        recipient_id: selectedMessage.sender_id === user.id 
+          ? selectedMessage.recipient_id 
+          : selectedMessage.sender_id,
+        message: replyText,
+      } as any;
+
       const { error } = await supabase
         .from('messages')
-        .insert({
-          car_id: selectedMessage.car_id,
-          sender_id: user.id,
-          recipient_id: selectedMessage.sender_id === user.id 
-            ? selectedMessage.recipient_id 
-            : selectedMessage.sender_id,
-          message: replyText,
-        });
+        .insert(messageData);
 
       if (error) {
         console.error("Error sending reply:", error);
