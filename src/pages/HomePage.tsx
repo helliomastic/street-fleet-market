@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
@@ -7,6 +6,8 @@ import SearchFilters from "@/components/car/SearchFilters";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card } from "@/components/ui/card";
 
 const HomePage = () => {
   const [listings, setListings] = useState<CarListing[]>([]);
@@ -22,17 +23,10 @@ const HomePage = () => {
         console.log("Fetching car listings...");
         setLoading(true);
         
-        // Fetch car listings from Supabase with their profile data using a join
+        // Fetch cars data first
         const { data: carsData, error: carsError } = await supabase
           .from('cars')
-          .select(`
-            *,
-            profiles:user_id (
-              id, 
-              full_name, 
-              username
-            )
-          `)
+          .select('*')
           .order('created_at', { ascending: false });
           
         if (carsError) {
@@ -41,18 +35,34 @@ const HomePage = () => {
         
         console.log("Fetched cars data:", carsData);
         
-        // Convert the data to match our CarListing type
+        // Create a map to store profile information for each user
+        const userProfiles: Record<string, any> = {};
+        
+        // Get unique user IDs
+        const userIds = [...new Set(carsData.map(car => car.user_id))];
+        
+        // If there are user IDs, fetch their profiles
+        if (userIds.length > 0) {
+          const { data: profilesData, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, full_name, username')
+            .in('id', userIds);
+            
+          if (profilesError) {
+            console.error("Error fetching profiles:", profilesError);
+          } else if (profilesData) {
+            // Create a map of user_id to profile data
+            profilesData.forEach(profile => {
+              userProfiles[profile.id] = profile;
+            });
+          }
+        }
+        
+        // Map the cars data to our CarListing type, including profile information
         const formattedListings: CarListing[] = carsData.map(car => {
-          // Handle potential undefined profiles or empty object by providing defaults
-          const profile = car.profiles || {};
+          // Get profile data from our map, or use empty object if not found
+          const profile = userProfiles[car.user_id] || {};
           
-          // Explicitly type the properties with safe fallbacks
-          const sellerFullName = typeof profile === 'object' && profile !== null && 'full_name' in profile ? 
-            profile.full_name as string | null : null;
-            
-          const sellerUsername = typeof profile === 'object' && profile !== null && 'username' in profile ? 
-            profile.username as string | null : null;
-            
           return {
             id: car.id,
             title: car.title,
@@ -66,7 +76,7 @@ const HomePage = () => {
             postedDate: new Date(car.created_at || new Date()),
             userId: car.user_id,
             condition: car.condition,
-            sellerName: sellerFullName || sellerUsername || 'Anonymous',
+            sellerName: profile.full_name || profile.username || 'Anonymous',
             createdAt: new Date(car.created_at || new Date()),
           };
         });
@@ -185,16 +195,19 @@ const HomePage = () => {
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {Array.from({ length: 8 }).map((_, index) => (
-                <div key={index} className="car-card animate-pulse">
-                  <div className="h-48 bg-gray-200" />
-                  <div className="p-4">
-                    <div className="h-6 bg-gray-200 rounded mb-2" />
-                    <div className="h-4 bg-gray-200 rounded mb-4 w-2/3" />
-                    <div className="flex justify-between items-center">
-                      <div className="h-6 bg-gray-200 rounded w-1/3" />
-                      <div className="h-8 bg-gray-200 rounded w-1/4" />
+                <div key={index} className="h-full">
+                  <Card className="overflow-hidden h-full">
+                    <Skeleton className="h-48 w-full" />
+                    <div className="p-4">
+                      <Skeleton className="h-6 w-3/4 mb-2" />
+                      <Skeleton className="h-4 w-1/2 mb-4" />
+                      <Skeleton className="h-6 w-1/3" />
                     </div>
-                  </div>
+                    <div className="px-4 py-3 bg-gray-50 flex justify-between">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                  </Card>
                 </div>
               ))}
             </div>
