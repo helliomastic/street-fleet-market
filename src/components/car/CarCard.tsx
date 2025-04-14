@@ -30,10 +30,27 @@ const CarCard = ({ car }: CarCardProps) => {
     maximumFractionDigits: 0
   });
 
-  // Handle image loading errors
+  // Handle image loading errors with better fallback strategy
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    e.currentTarget.src = '/placeholder.svg';
-    e.currentTarget.classList.add('object-contain', 'p-4');
+    // Use a placeholder image specific to the car make if possible
+    const makeLower = make.toLowerCase();
+    if (makeLower.includes('toyota')) {
+      e.currentTarget.src = 'https://images.unsplash.com/photo-1559416523-140ddc3d238c?w=500&auto=format';
+    } else if (makeLower.includes('bmw')) {
+      e.currentTarget.src = 'https://images.unsplash.com/photo-1556189250-72ba954cfc2b?w=500&auto=format';
+    } else if (makeLower.includes('mercedes')) {
+      e.currentTarget.src = 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=500&auto=format';
+    } else if (makeLower.includes('audi')) {
+      e.currentTarget.src = 'https://images.unsplash.com/photo-1603584173870-7f23fdae1b7a?w=500&auto=format';
+    } else if (makeLower.includes('ford')) {
+      e.currentTarget.src = 'https://images.unsplash.com/photo-1551830820-330a71b99659?w=500&auto=format';
+    } else if (makeLower.includes('honda')) {
+      e.currentTarget.src = 'https://images.unsplash.com/photo-1609521263047-f8f205293f24?w=500&auto=format';
+    } else {
+      // Default placeholder as fallback
+      e.currentTarget.src = '/placeholder.svg';
+      e.currentTarget.classList.add('object-contain', 'p-4');
+    }
   };
 
   return (
@@ -42,7 +59,7 @@ const CarCard = ({ car }: CarCardProps) => {
         {image ? (
           <img
             src={image}
-            alt={`${make} ${model}`}
+            alt={`${year} ${make} ${model}`}
             className="car-card-img w-full h-full object-cover"
             onError={handleImageError}
             loading="lazy"

@@ -25,14 +25,68 @@ export const generateMockListings = (count: number): CarListing[] => {
   const transmissions = ["Automatic", "Manual"];
   const fuelTypes = ["Gasoline", "Diesel", "Electric", "Hybrid"];
 
-  // Image URLs (using placeholder images but in a real app would use Supabase Storage)
-  const imageUrls = [
-    "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?q=80&w=1000",
-    "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?q=80&w=1000",
-    "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?q=80&w=1000",
-    "https://images.unsplash.com/photo-1542282088-fe8426682b8f?q=80&w=1000",
-    "https://images.unsplash.com/photo-1583121274602-3e2820c69888?q=80&w=1000",
-    "https://images.unsplash.com/photo-1617814076668-8dfc6fe159ed?q=80&w=1000"
+  // High-quality car images from Unsplash with reliable URLs
+  const brandSpecificImages = {
+    "Toyota": [
+      "https://images.unsplash.com/photo-1559416523-140ddc3d238c?w=500&auto=format",
+      "https://images.unsplash.com/photo-1621007690695-b5d6c1068acf?w=500&auto=format",
+      "https://images.unsplash.com/photo-1610647752706-3bb12232b3e4?w=500&auto=format"
+    ],
+    "Honda": [
+      "https://images.unsplash.com/photo-1609521263047-f8f205293f24?w=500&auto=format",
+      "https://images.unsplash.com/photo-1605816988069-b11383b50717?w=500&auto=format",
+      "https://images.unsplash.com/photo-1606016159991-dfe4f2746ad5?w=500&auto=format"
+    ],
+    "Ford": [
+      "https://images.unsplash.com/photo-1551830820-330a71b99659?w=500&auto=format",
+      "https://images.unsplash.com/photo-1612394383019-c8fe5e627f86?w=500&auto=format",
+      "https://images.unsplash.com/photo-1600661653561-629509783105?w=500&auto=format"
+    ],
+    "Chevrolet": [
+      "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=500&auto=format",
+      "https://images.unsplash.com/photo-1622503653138-cfdb63276e46?w=500&auto=format",
+      "https://images.unsplash.com/photo-1616422285623-13ff0162193c?w=500&auto=format"
+    ],
+    "BMW": [
+      "https://images.unsplash.com/photo-1556189250-72ba954cfc2b?w=500&auto=format",
+      "https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=500&auto=format",
+      "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=500&auto=format"
+    ],
+    "Mercedes-Benz": [
+      "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=500&auto=format",
+      "https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?w=500&auto=format",
+      "https://images.unsplash.com/photo-1563720223185-11003d516935?w=500&auto=format"
+    ],
+    "Audi": [
+      "https://images.unsplash.com/photo-1603584173870-7f23fdae1b7a?w=500&auto=format",
+      "https://images.unsplash.com/photo-1542128962-9d50ad7bf014?w=500&auto=format", 
+      "https://images.unsplash.com/photo-1606664455838-4836be37e8ee?w=500&auto=format"
+    ],
+    "Tesla": [
+      "https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=500&auto=format",
+      "https://images.unsplash.com/photo-1617704548623-340376564e68?w=500&auto=format",
+      "https://images.unsplash.com/photo-1554744512-d6c603f27c54?w=500&auto=format"
+    ],
+    "Volkswagen": [
+      "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?w=500&auto=format",
+      "https://images.unsplash.com/photo-1595229172888-58b7c6875d7c?w=500&auto=format",
+      "https://images.unsplash.com/photo-1627454265303-394d6c9f3bab?w=500&auto=format"
+    ],
+    "Hyundai": [
+      "https://images.unsplash.com/photo-1629897048514-3dd7414ebc78?w=500&auto=format",
+      "https://images.unsplash.com/photo-1626475350303-bca578623acb?w=500&auto=format",
+      "https://images.unsplash.com/photo-1607853234180-3d3c1642be8c?w=500&auto=format"
+    ]
+  };
+
+  // Fallback images for any car make not covered above
+  const genericCarImages = [
+    "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=500&auto=format",
+    "https://images.unsplash.com/photo-1583121274602-3e2820c69888?w=500&auto=format",
+    "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=500&auto=format",
+    "https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?w=500&auto=format",
+    "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=500&auto=format",
+    "https://images.unsplash.com/photo-1534093607318-f025413f49cb?w=500&auto=format"
   ];
 
   // Generate unique IDs
@@ -44,7 +98,17 @@ export const generateMockListings = (count: number): CarListing[] => {
     const modelIndex = Math.floor(Math.random() * carBrands[brandIndex].models.length);
     const model = carBrands[brandIndex].models[modelIndex];
     const year = Math.floor(Math.random() * 10) + (currentYear - 10);
-    const imageIndex = Math.floor(Math.random() * imageUrls.length);
+    
+    // Select image based on car make
+    let carImage;
+    if (brandSpecificImages[make]) {
+      const brandImages = brandSpecificImages[make];
+      const imageIndex = Math.floor(Math.random() * brandImages.length);
+      carImage = brandImages[imageIndex];
+    } else {
+      const imageIndex = Math.floor(Math.random() * genericCarImages.length);
+      carImage = genericCarImages[imageIndex];
+    }
 
     // Generate a descriptive title
     const condition = conditions[Math.floor(Math.random() * conditions.length)];
@@ -72,7 +136,7 @@ export const generateMockListings = (count: number): CarListing[] => {
       make,
       model,
       year,
-      image: imageUrls[imageIndex],
+      image: carImage,
       description,
       userId: "user-" + (index % 5), // Distribute cars among 5 mock users
       createdAt: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString()
