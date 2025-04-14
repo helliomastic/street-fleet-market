@@ -80,26 +80,49 @@ const CarCard = ({ car }: CarCardProps) => {
       
       console.log("Deleting car with ID:", car.id);
       
-      // First, delete all messages associated with this car
-      const { error: messagesError } = await supabase
+      // Explicitly check if there are messages for this car first
+      const { data: messageCheck, error: checkError } = await supabase
         .from('messages')
-        .delete()
+        .select('id')
         .eq('car_id', car.id);
         
-      if (messagesError) {
-        console.error("Error deleting related messages:", messagesError);
+      if (checkError) {
+        console.error("Error checking for messages:", checkError);
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Failed to delete related messages: " + messagesError.message
+          description: "Failed to check for messages: " + checkError.message
         });
         setIsDeleting(false);
         return;
       }
       
-      console.log("Successfully deleted messages, now deleting car");
+      console.log(`Found ${messageCheck?.length || 0} messages to delete for car ${car.id}`);
       
-      // After messages are deleted, delete the car
+      // Only try to delete messages if there are any
+      if (messageCheck && messageCheck.length > 0) {
+        const { error: messagesError } = await supabase
+          .from('messages')
+          .delete()
+          .eq('car_id', car.id);
+          
+        if (messagesError) {
+          console.error("Error deleting related messages:", messagesError);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to delete related messages: " + messagesError.message
+          });
+          setIsDeleting(false);
+          return;
+        }
+        
+        console.log("Successfully deleted messages for car:", car.id);
+      }
+      
+      // After messages are deleted (or if there were none), delete the car
+      console.log("Now deleting car with ID:", car.id);
+      
       const { error } = await supabase
         .from('cars')
         .delete()
@@ -108,7 +131,13 @@ const CarCard = ({ car }: CarCardProps) => {
         
       if (error) {
         console.error("Error deleting car:", error);
-        throw error;
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to delete car: " + error.message
+        });
+        setIsDeleting(false);
+        return;
       }
       
       console.log("Car successfully deleted");
