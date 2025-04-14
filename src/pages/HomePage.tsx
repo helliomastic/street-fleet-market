@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
@@ -6,6 +5,7 @@ import CarCard, { CarListing } from "@/components/car/CarCard";
 import SearchFilters from "@/components/car/SearchFilters";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
 const HomePage = () => {
   const [listings, setListings] = useState<CarListing[]>([]);
@@ -78,6 +78,11 @@ const HomePage = () => {
         setFilteredListings(formattedListings);
       } catch (error) {
         console.error("Error fetching listings:", error);
+        toast({
+          variant: "destructive",
+          title: "Error loading listings",
+          description: "Could not load car listings. Please try again.",
+        });
       } finally {
         setLoading(false);
       }
@@ -89,16 +94,37 @@ const HomePage = () => {
     const carsSubscription = supabase
       .channel('public:cars')
       .on('postgres_changes', { 
-        event: '*', 
+        event: 'INSERT', 
         schema: 'public', 
         table: 'cars' 
       }, (payload) => {
-        console.log('Change received!', payload);
-        // Refetch listings when the cars table changes
+        console.log('New car listing added!', payload);
+        // Refetch listings when a new car is added
+        fetchListings();
+      })
+      .on('postgres_changes', { 
+        event: 'DELETE', 
+        schema: 'public', 
+        table: 'cars' 
+      }, (payload) => {
+        console.log('Car listing deleted!', payload);
+        // Refetch listings when a car is deleted
+        fetchListings();
+      })
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'cars' 
+      }, (payload) => {
+        console.log('Car listing updated!', payload);
+        // Refetch listings when a car is updated
         fetchListings();
       })
       .subscribe((status) => {
         console.log('Subscription status:', status);
+        if (status !== 'SUBSCRIBED') {
+          console.error('Failed to subscribe to car listings changes');
+        }
       });
       
     // Clean up subscription on unmount

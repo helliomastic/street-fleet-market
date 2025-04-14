@@ -19,7 +19,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Label } from "@/components/ui/label";
 
 // Login form schema
 const loginSchema = z.object({
@@ -98,7 +97,9 @@ const AuthPage = () => {
   const handleSignup = async (data: z.infer<typeof signupSchema>) => {
     try {
       setIsLoading(true);
-      const { error } = await supabase.auth.signUp({
+      
+      // Create user with Auth
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
@@ -108,8 +109,26 @@ const AuthPage = () => {
         }
       });
 
-      if (error) {
-        throw error;
+      if (signUpError) {
+        throw signUpError;
+      }
+      
+      // Manually create profile entry to ensure it exists
+      if (authData.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: authData.user.id,
+            full_name: data.fullName,
+            username: data.email.split('@')[0],
+            role: 'user',
+          }, { 
+            onConflict: 'id',
+          });
+          
+        if (profileError) {
+          console.error("Error creating profile:", profileError);
+        }
       }
 
       toast({
@@ -117,8 +136,14 @@ const AuthPage = () => {
         description: "Your account has been created successfully. You can now log in.",
       });
       
-      loginForm.setValue("email", data.email);
-      loginForm.setValue("password", data.password);
+      // Redirect to dashboard after successful signup
+      if (authData.session) {
+        navigate("/dashboard");
+      } else {
+        // If no session (email confirmation required), pre-fill login form
+        loginForm.setValue("email", data.email);
+        loginForm.setValue("password", data.password);
+      }
       
       // Reset signup form
       signupForm.reset();
