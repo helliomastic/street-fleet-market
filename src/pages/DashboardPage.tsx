@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
@@ -6,8 +7,19 @@ import { Car, MessageSquare, User } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import MessagesTab from "@/components/messages/MessagesTab";
-
-// Import any other required components
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { toast } from "@/components/ui/use-toast";
+import { Trash2, Eye, Pencil } from "lucide-react";
 
 const DashboardPage = () => {
   const { user, isLoading } = useAuth();
@@ -17,6 +29,7 @@ const DashboardPage = () => {
   const [userCars, setUserCars] = useState<any[]>([]);
   const [carsLoading, setCarsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("listings");
+  const [deletingCarId, setDeletingCarId] = useState<string | null>(null);
 
   useEffect(() => {
     // Redirect if not logged in and done loading
@@ -67,6 +80,40 @@ const DashboardPage = () => {
       console.error("Error:", error);
     } finally {
       setCarsLoading(false);
+    }
+  };
+  
+  const handleDeleteCar = async (carId: string) => {
+    if (!user) return;
+    
+    try {
+      setDeletingCarId(carId);
+      
+      // Delete the car from the database
+      const { error } = await supabase
+        .from('cars')
+        .delete()
+        .eq('id', carId)
+        .eq('user_id', user.id);
+        
+      if (error) throw error;
+      
+      // Update the local state to remove the deleted car
+      setUserCars(prevCars => prevCars.filter(car => car.id !== carId));
+      
+      toast({
+        title: "Listing deleted",
+        description: "Your car listing has been successfully deleted.",
+      });
+    } catch (error: any) {
+      console.error("Error deleting car:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to delete the listing. Please try again.",
+      });
+    } finally {
+      setDeletingCarId(null);
     }
   };
 
@@ -158,7 +205,6 @@ const DashboardPage = () => {
             </TabsList>
 
             <TabsContent value="listings">
-              {/* Replace with your listings component */}
               <div className="bg-white shadow rounded-lg p-6">
                 <h2 className="text-xl font-semibold mb-4">My Car Listings</h2>
                 {carsLoading ? (
@@ -207,16 +253,43 @@ const DashboardPage = () => {
                           <div className="mt-4 flex gap-2">
                             <button
                               onClick={() => navigate(`/car/${car.id}`)}
-                              className="bg-gray-200 text-gray-800 px-3 py-1.5 rounded hover:bg-gray-300"
+                              className="flex items-center gap-1 bg-gray-200 text-gray-800 px-3 py-1.5 rounded hover:bg-gray-300"
                             >
-                              View
+                              <Eye className="h-4 w-4" /> View
                             </button>
                             <button
                               onClick={() => navigate(`/edit-car/${car.id}`)}
-                              className="bg-brand-blue text-white px-3 py-1.5 rounded hover:bg-opacity-90"
+                              className="flex items-center gap-1 bg-brand-blue text-white px-3 py-1.5 rounded hover:bg-opacity-90"
                             >
-                              Edit
+                              <Pencil className="h-4 w-4" /> Edit
                             </button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <button
+                                  className="flex items-center gap-1 bg-red-500 text-white px-3 py-1.5 rounded hover:bg-red-600"
+                                >
+                                  <Trash2 className="h-4 w-4" /> Delete
+                                </button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Listing</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete this car listing? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteCar(car.id)}
+                                    disabled={deletingCarId === car.id}
+                                    className="bg-red-500 hover:bg-red-600"
+                                  >
+                                    {deletingCarId === car.id ? "Deleting..." : "Delete"}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         </div>
                       </div>

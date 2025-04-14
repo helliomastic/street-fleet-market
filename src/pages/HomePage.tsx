@@ -18,6 +18,7 @@ const HomePage = () => {
     // Fetch car listings from Supabase
     const fetchListings = async () => {
       try {
+        console.log("Fetching car listings...");
         setLoading(true);
         
         // Fetch car listings from Supabase first, then fetch profiles separately
@@ -29,6 +30,8 @@ const HomePage = () => {
         if (carsError) {
           throw carsError;
         }
+        
+        console.log("Fetched cars data:", carsData);
         
         // Get all user IDs from cars to fetch their profiles
         const userIds = [...new Set(carsData.map(car => car.user_id))];
@@ -70,6 +73,7 @@ const HomePage = () => {
           };
         });
         
+        console.log("Formatted listings:", formattedListings);
         setListings(formattedListings);
         setFilteredListings(formattedListings);
       } catch (error) {
@@ -81,15 +85,21 @@ const HomePage = () => {
 
     fetchListings();
     
-    // Set up a subscription to listen for changes to the cars table
+    // Set up realtime subscription for changes to the cars table
     const carsSubscription = supabase
       .channel('public:cars')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cars' }, (payload) => {
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'cars' 
+      }, (payload) => {
         console.log('Change received!', payload);
         // Refetch listings when the cars table changes
         fetchListings();
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Subscription status:', status);
+      });
       
     // Clean up subscription on unmount
     return () => {
