@@ -63,40 +63,94 @@ const MessagesTab = () => {
   const fetchMessages = async () => {
     setLoading(true);
     try {
-      // Fetch received messages
-      const { data: received, error: receivedError } = await supabase
+      // First, fetch received messages
+      const { data: receivedData, error: receivedError } = await supabase
         .from('messages')
         .select(`
-          *,
-          car:car_id(title, make, model, year),
-          sender_profile:sender_id(full_name),
-          recipient_profile:recipient_id(full_name)
+          id,
+          car_id,
+          sender_id,
+          recipient_id,
+          message,
+          read,
+          created_at,
+          car:cars(title, make, model, year)
         `)
         .eq('recipient_id', user?.id)
         .order('created_at', { ascending: false });
 
       if (receivedError) {
         console.error("Error fetching received messages:", receivedError);
-      } else if (received) {
-        setReceivedMessages(received as unknown as Message[]);
+      } else {
+        // Now get profile data for each message sender
+        const receivedWithProfiles = await Promise.all((receivedData || []).map(async (msg) => {
+          // Get sender profile
+          const { data: senderData } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', msg.sender_id)
+            .single();
+            
+          // Get recipient profile (should be the current user)
+          const { data: recipientData } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', msg.recipient_id)
+            .single();
+            
+          return {
+            ...msg,
+            sender_profile: senderData || { full_name: 'Unknown User' },
+            recipient_profile: recipientData || { full_name: 'Unknown User' }
+          };
+        }));
+        
+        setReceivedMessages(receivedWithProfiles as unknown as Message[]);
       }
 
-      // Fetch sent messages
-      const { data: sent, error: sentError } = await supabase
+      // Then, fetch sent messages
+      const { data: sentData, error: sentError } = await supabase
         .from('messages')
         .select(`
-          *,
-          car:car_id(title, make, model, year),
-          sender_profile:sender_id(full_name),
-          recipient_profile:recipient_id(full_name)
+          id,
+          car_id,
+          sender_id,
+          recipient_id,
+          message,
+          read,
+          created_at,
+          car:cars(title, make, model, year)
         `)
         .eq('sender_id', user?.id)
         .order('created_at', { ascending: false });
 
       if (sentError) {
         console.error("Error fetching sent messages:", sentError);
-      } else if (sent) {
-        setSentMessages(sent as unknown as Message[]);
+      } else {
+        // Now get profile data for each message recipient
+        const sentWithProfiles = await Promise.all((sentData || []).map(async (msg) => {
+          // Get sender profile (should be the current user)
+          const { data: senderData } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', msg.sender_id)
+            .single();
+            
+          // Get recipient profile
+          const { data: recipientData } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', msg.recipient_id)
+            .single();
+            
+          return {
+            ...msg,
+            sender_profile: senderData || { full_name: 'Unknown User' },
+            recipient_profile: recipientData || { full_name: 'Unknown User' }
+          };
+        }));
+        
+        setSentMessages(sentWithProfiles as unknown as Message[]);
       }
     } catch (error) {
       console.error("Error fetching messages:", error);
