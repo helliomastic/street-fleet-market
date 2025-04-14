@@ -30,17 +30,25 @@ const CarCard = ({ car }: CarCardProps) => {
     maximumFractionDigits: 0
   });
 
+  // Handle image loading errors
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    e.currentTarget.src = '/placeholder.svg';
+    e.currentTarget.classList.add('object-contain', 'p-4');
+  };
+
   return (
-    <div className="car-card">
-      <div className="relative">
+    <div className="car-card bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+      <div className="relative h-48">
         {image ? (
           <img
             src={image}
             alt={`${make} ${model}`}
-            className="car-card-img"
+            className="car-card-img w-full h-full object-cover"
+            onError={handleImageError}
+            loading="lazy"
           />
         ) : (
-          <div className="car-card-img bg-gray-200 flex items-center justify-center">
+          <div className="car-card-img h-full w-full bg-gray-200 flex items-center justify-center">
             <CarIcon className="h-12 w-12 text-gray-400" />
           </div>
         )}
