@@ -3,6 +3,23 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react"; 
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "@/components/ui/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useState } from "react";
 
 export interface CarListing {
   id: string;
@@ -21,7 +38,15 @@ export interface CarListing {
   createdAt: Date;
 }
 
-const CarCard = ({ car }: { car: CarListing }) => {
+interface CarCardProps {
+  car: CarListing;
+}
+
+const CarCard = ({ car }: CarCardProps) => {
+  const { user } = useAuth();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const isOwner = user && user.id === car.userId;
+  
   // Format the time since posting
   const timeAgo = formatDistanceToNow(car.postedDate, { addSuffix: true });
   
@@ -45,40 +70,108 @@ const CarCard = ({ car }: { car: CarListing }) => {
     return conditionMap[condition] || condition;
   };
   
+  const handleDelete = async () => {
+    if (!user) return;
+    
+    try {
+      setIsDeleting(true);
+      
+      // Delete the car from the database
+      const { error } = await supabase
+        .from('cars')
+        .delete()
+        .eq('id', car.id)
+        .eq('user_id', user.id);
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Listing deleted",
+        description: "Your car listing has been successfully deleted.",
+      });
+    } catch (error: any) {
+      console.error("Error deleting car:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to delete the listing. Please try again.",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+  
   return (
-    <Link to={`/car/${car.id}`}>
-      <Card className="overflow-hidden h-full hover:shadow-md transition-shadow">
-        <div className="relative h-48 bg-gray-200">
-          {car.image ? (
-            <img 
-              src={car.image} 
-              alt={car.title} 
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full bg-gray-100 text-gray-400">
-              No image available
-            </div>
-          )}
-          <Badge 
-            className="absolute top-2 right-2"
-            variant={car.condition === 'new' ? "default" : "secondary"}
-          >
-            {getConditionDisplay(car.condition)}
-          </Badge>
+    <div className="relative h-full">
+      <Link to={`/car/${car.id}`}>
+        <Card className="overflow-hidden h-full hover:shadow-md transition-shadow">
+          <div className="relative h-48 bg-gray-200">
+            {car.image ? (
+              <img 
+                src={car.image} 
+                alt={car.title} 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full bg-gray-100 text-gray-400">
+                No image available
+              </div>
+            )}
+            <Badge 
+              className="absolute top-2 right-2"
+              variant={car.condition === 'new' ? "default" : "secondary"}
+            >
+              {getConditionDisplay(car.condition)}
+            </Badge>
+          </div>
+          <CardContent className="p-4">
+            <h3 className="font-bold text-lg mb-1 truncate">{car.title}</h3>
+            <p className="text-sm text-gray-500 mb-2">{car.year} {car.make} {car.model}</p>
+            <p className="text-xl font-bold text-brand-blue">{formattedPrice}</p>
+            <p className="text-xs text-gray-500 mt-1">Seller: {car.sellerName}</p>
+          </CardContent>
+          <CardFooter className="px-4 py-3 bg-gray-50 flex justify-between items-center text-sm text-gray-500">
+            <span>{car.location}</span>
+            <span>{timeAgo}</span>
+          </CardFooter>
+        </Card>
+      </Link>
+      
+      {isOwner && (
+        <div className="absolute top-2 left-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button 
+                variant="destructive" 
+                size="icon" 
+                className="w-8 h-8" 
+                onClick={(e) => e.preventDefault()}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Listing</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete this car listing? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="bg-red-500 hover:bg-red-600"
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
-        <CardContent className="p-4">
-          <h3 className="font-bold text-lg mb-1 truncate">{car.title}</h3>
-          <p className="text-sm text-gray-500 mb-2">{car.year} {car.make} {car.model}</p>
-          <p className="text-xl font-bold text-brand-blue">{formattedPrice}</p>
-          <p className="text-xs text-gray-500 mt-1">Seller: {car.sellerName}</p>
-        </CardContent>
-        <CardFooter className="px-4 py-3 bg-gray-50 flex justify-between items-center text-sm text-gray-500">
-          <span>{car.location}</span>
-          <span>{timeAgo}</span>
-        </CardFooter>
-      </Card>
-    </Link>
+      )}
+    </div>
   );
 };
 

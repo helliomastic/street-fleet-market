@@ -80,6 +80,21 @@ const HomePage = () => {
     };
 
     fetchListings();
+    
+    // Set up a subscription to listen for changes to the cars table
+    const carsSubscription = supabase
+      .channel('public:cars')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cars' }, (payload) => {
+        console.log('Change received!', payload);
+        // Refetch listings when the cars table changes
+        fetchListings();
+      })
+      .subscribe();
+      
+    // Clean up subscription on unmount
+    return () => {
+      supabase.removeChannel(carsSubscription);
+    };
   }, []);
 
   const handleFilterChange = (filters: any) => {
