@@ -1,11 +1,11 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
-import { Mail, MessageSquare, Check, Send } from "lucide-react";
+import { Mail, MessageSquare, Check, Send, RefreshCw } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -50,19 +50,18 @@ const MessagesTab = () => {
   const [receivedMessages, setReceivedMessages] = useState<Message[]>([]);
   const [sentMessages, setSentMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [replyText, setReplyText] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      fetchMessages();
-    }
-  }, [user]);
-
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
+    if (!user) return;
+    
     setLoading(true);
     try {
+      console.log("Fetching messages for user:", user.id);
+      
       // First, fetch received messages
       const { data: receivedData, error: receivedError } = await supabase
         .from('messages')
@@ -76,18 +75,19 @@ const MessagesTab = () => {
           created_at,
           car:cars(title, make, model, year)
         `)
-        .eq('recipient_id', user?.id);
+        .eq('recipient_id', user.id);
 
       if (receivedError) {
         console.error("Error fetching received messages:", receivedError);
+        toast({
+          title: "Error",
+          description: "Failed to load received messages. Please try again.",
+          variant: "destructive",
+        });
       } else if (receivedData) {
+        console.log("Received messages data:", receivedData);
         // Now get profile data for each message sender
         const receivedWithProfiles = await Promise.all(receivedData.map(async (msg) => {
-          // Check if msg exists and has the necessary properties
-          if (!msg || typeof msg !== 'object') {
-            return null;
-          }
-          
           try {
             // Get sender profile
             const { data: senderData } = await supabase
@@ -107,9 +107,7 @@ const MessagesTab = () => {
               ...msg,
               sender_profile: senderData || { full_name: 'Unknown User' },
               recipient_profile: recipientData || { full_name: 'Unknown User' },
-              car: Array.isArray(msg.car) && msg.car.length > 0 
-                ? msg.car[0] 
-                : { title: 'Unknown', make: 'Unknown', model: 'Unknown', year: 0 }
+              car: msg.car || { title: 'Unknown', make: 'Unknown', model: 'Unknown', year: 0 }
             } as Message;
           } catch (error) {
             console.error("Error processing message:", error);
@@ -134,18 +132,19 @@ const MessagesTab = () => {
           created_at,
           car:cars(title, make, model, year)
         `)
-        .eq('sender_id', user?.id);
+        .eq('sender_id', user.id);
 
       if (sentError) {
         console.error("Error fetching sent messages:", sentError);
+        toast({
+          title: "Error",
+          description: "Failed to load sent messages. Please try again.",
+          variant: "destructive",
+        });
       } else if (sentData) {
+        console.log("Sent messages data:", sentData);
         // Now get profile data for each message recipient
         const sentWithProfiles = await Promise.all(sentData.map(async (msg) => {
-          // Check if msg exists and has the necessary properties
-          if (!msg || typeof msg !== 'object') {
-            return null;
-          }
-          
           try {
             // Get sender profile (should be the current user)
             const { data: senderData } = await supabase
@@ -165,9 +164,7 @@ const MessagesTab = () => {
               ...msg,
               sender_profile: senderData || { full_name: 'Unknown User' },
               recipient_profile: recipientData || { full_name: 'Unknown User' },
-              car: Array.isArray(msg.car) && msg.car.length > 0 
-                ? msg.car[0] 
-                : { title: 'Unknown', make: 'Unknown', model: 'Unknown', year: 0 }
+              car: msg.car || { title: 'Unknown', make: 'Unknown', model: 'Unknown', year: 0 }
             } as Message;
           } catch (error) {
             console.error("Error processing message:", error);
@@ -187,8 +184,43 @@ const MessagesTab = () => {
       });
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  }, [user]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchMessages();
   };
+
+  useEffect(() => {
+    if (user) {
+      fetchMessages();
+      
+      // Set up realtime subscription for new messages
+      const channel = supabase
+        .channel('public:messages')
+        .on('postgres_changes', { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'messages',
+          filter: `recipient_id=eq.${user.id}`
+        }, (payload) => {
+          console.log('New message received:', payload);
+          fetchMessages(); // Refresh messages when a new one arrives
+          
+          toast({
+            title: "New Message",
+            description: "You have received a new message",
+          });
+        })
+        .subscribe();
+        
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user, fetchMessages]);
 
   const markAsRead = async (message: Message) => {
     if (message.read) return;
@@ -201,6 +233,11 @@ const MessagesTab = () => {
 
       if (error) {
         console.error("Error marking message as read:", error);
+        toast({
+          title: "Error",
+          description: "Failed to mark message as read. Please try again.",
+          variant: "destructive",
+        });
       } else {
         // Update local state
         setReceivedMessages(prev => prev.map(msg => 
@@ -238,6 +275,8 @@ const MessagesTab = () => {
         message: replyText,
         read: false
       };
+
+      console.log("Sending reply:", messageData);
 
       const { error } = await supabase
         .from('messages')
@@ -286,7 +325,13 @@ const MessagesTab = () => {
 
   return (
     <div className="container mx-auto py-6">
-      <h1 className="text-2xl font-bold mb-6">Messages</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Messages</h1>
+        <Button onClick={handleRefresh} variant="outline" disabled={refreshing} className="flex items-center gap-2">
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'Refreshing...' : 'Refresh'}
+        </Button>
+      </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Message List */}
@@ -305,8 +350,14 @@ const MessagesTab = () => {
             
             <TabsContent value="received" className="mt-4">
               {loading ? (
-                <div className="flex justify-center p-4">
-                  <div className="animate-pulse h-6 w-24 bg-gray-200 rounded"></div>
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="animate-pulse p-3 rounded-lg border">
+                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2 mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-full"></div>
+                    </div>
+                  ))}
                 </div>
               ) : receivedMessages.length === 0 ? (
                 <div className="text-center py-6 bg-gray-50 rounded-lg">
@@ -353,8 +404,14 @@ const MessagesTab = () => {
             
             <TabsContent value="sent" className="mt-4">
               {loading ? (
-                <div className="flex justify-center p-4">
-                  <div className="animate-pulse h-6 w-24 bg-gray-200 rounded"></div>
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="animate-pulse p-3 rounded-lg border">
+                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2 mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-full"></div>
+                    </div>
+                  ))}
                 </div>
               ) : sentMessages.length === 0 ? (
                 <div className="text-center py-6 bg-gray-50 rounded-lg">
