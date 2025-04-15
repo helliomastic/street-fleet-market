@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
@@ -45,7 +44,7 @@ interface Message {
   recipient_profile: MessageProfile;
 }
 
-const MessagesTab = () => {
+export default function MessagesTab() {
   const { user } = useAuth();
   const [receivedMessages, setReceivedMessages] = useState<Message[]>([]);
   const [sentMessages, setSentMessages] = useState<Message[]>([]);
@@ -532,5 +531,3 @@ const MessagesTab = () => {
     </div>
   );
 };
-
-export default MessagesTab;
