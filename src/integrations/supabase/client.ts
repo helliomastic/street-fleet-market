@@ -6,7 +6,15 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://pcyuwktvexjrzuiusilt.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBjeXV3a3R2ZXhqcnp1aXVzaWx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ1NTY0NDUsImV4cCI6MjA2MDEzMjQ0NX0.TkVSSobi3394fSwH0P3Jb33o-DbKzXD81Z_cDetNeeA";
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
-
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+// Create the Supabase client with options for real-time
+export const supabase = createClient<Database>(
+  SUPABASE_URL, 
+  SUPABASE_PUBLISHABLE_KEY,
+  {
+    realtime: {
+      params: {
+        eventsPerSecond: 10
+      }
+    }
+  }
+);

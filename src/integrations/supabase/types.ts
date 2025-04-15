@@ -12,7 +12,7 @@ export type Database = {
       cars: {
         Row: {
           condition: string
-          created_at: string | null
+          created_at: string
           description: string
           id: string
           image_url: string | null
@@ -20,12 +20,13 @@ export type Database = {
           model: string
           price: number
           title: string
+          updated_at: string
           user_id: string
           year: number
         }
         Insert: {
           condition: string
-          created_at?: string | null
+          created_at?: string
           description: string
           id?: string
           image_url?: string | null
@@ -33,12 +34,13 @@ export type Database = {
           model: string
           price: number
           title: string
+          updated_at?: string
           user_id: string
           year: number
         }
         Update: {
           condition?: string
-          created_at?: string | null
+          created_at?: string
           description?: string
           id?: string
           image_url?: string | null
@@ -46,6 +48,7 @@ export type Database = {
           model?: string
           price?: number
           title?: string
+          updated_at?: string
           user_id?: string
           year?: number
         }

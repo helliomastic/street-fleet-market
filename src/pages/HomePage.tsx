@@ -120,6 +120,7 @@ const HomePage = () => {
             table: 'cars' 
           }, (payload) => {
             console.log('New car added:', payload);
+            // Immediately fetch new listings when a car is added
             fetchListings();
           })
           .on('postgres_changes', { 
@@ -153,6 +154,7 @@ const HomePage = () => {
       }
     };
     
+    // Initialize the real-time subscription
     setupRealtimeSubscription();
     
     // Cleanup function

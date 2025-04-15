@@ -181,6 +181,7 @@ const CarCard = ({ car }: CarCardProps) => {
         </Card>
       </Link>
       
+      {/* Owner controls */}
       {isOwner && (
         <div className="absolute top-2 left-2 flex gap-2">
           <Button 

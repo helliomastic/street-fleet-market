@@ -1,250 +1,217 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useToast } from "@/components/ui/use-toast";
-import Layout from "@/components/layout/Layout";
-import { AlertCircle, Upload } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from "@/context/AuthContext";
-import { v4 as uuidv4 } from 'uuid';
+import { supabase } from "@/integrations/supabase/client";
+import { ImageIcon } from "lucide-react";
+import Layout from "@/components/layout/Layout";
+import { Skeleton } from "@/components/ui/skeleton";
 
-// Car form schema
-const formSchema = z.object({
-  title: z.string().min(5, {
-    message: "Title must be at least 5 characters.",
-  }),
-  make: z.string().min(1, {
-    message: "Please select a make.",
-  }),
-  model: z.string().min(1, {
-    message: "Model is required.",
-  }),
-  year: z.string().min(4, {
-    message: "Please select a valid year.",
-  }),
-  price: z.string().min(1, {
-    message: "Price is required.",
-  }),
-  description: z.string().min(20, {
-    message: "Description must be at least 20 characters.",
-  }),
-  condition: z.string().min(1, {
-    message: "Condition is required.",
-  }),
-});
-
-// Mock data for makes and models
-const MAKES = [
-  "Audi", "BMW", "Chevrolet", "Dodge", "Ford", "Honda", "Hyundai", 
-  "Jeep", "Kia", "Lexus", "Mazda", "Mercedes-Benz", "Nissan", "Tesla", "Toyota", "Volkswagen"
+const conditionOptions = [
+  { value: "new", label: "New" },
+  { value: "like_new", label: "Like New" },
+  { value: "excellent", label: "Excellent" },
+  { value: "good", label: "Good" },
+  { value: "fair", label: "Fair" },
+  { value: "poor", label: "Poor" },
 ];
 
-const MODELS_BY_MAKE: Record<string, string[]> = {
-  "Audi": ["A3", "A4", "A6", "Q3", "Q5", "Q7"],
-  "BMW": ["3 Series", "5 Series", "X3", "X5", "7 Series"],
-  "Chevrolet": ["Silverado", "Equinox", "Malibu", "Tahoe", "Suburban"],
-  "Dodge": ["Charger", "Challenger", "Durango", "Ram"],
-  "Ford": ["F-150", "Escape", "Explorer", "Mustang", "Bronco"],
-  "Honda": ["Civic", "Accord", "CR-V", "Pilot", "Odyssey"],
-  "Hyundai": ["Elantra", "Sonata", "Tucson", "Santa Fe", "Palisade"],
-  "Jeep": ["Wrangler", "Cherokee", "Grand Cherokee", "Compass", "Gladiator"],
-  "Kia": ["Forte", "Optima", "Sportage", "Sorento", "Telluride"],
-  "Lexus": ["IS", "ES", "RX", "NX", "GX"],
-  "Mazda": ["Mazda3", "Mazda6", "CX-5", "CX-9", "MX-5"],
-  "Mercedes-Benz": ["C-Class", "E-Class", "GLC", "GLE", "S-Class"],
-  "Nissan": ["Altima", "Maxima", "Rogue", "Pathfinder", "Frontier"],
-  "Tesla": ["Model 3", "Model Y", "Model S", "Model X", "Cybertruck"],
-  "Toyota": ["Camry", "Corolla", "RAV4", "Highlander", "Tacoma"],
-  "Volkswagen": ["Jetta", "Passat", "Tiguan", "Atlas", "Golf"]
-};
-
-// Generate years from 1990 to current year
-const YEARS = Array.from({ length: new Date().getFullYear() - 1989 }, (_, i) => (1990 + i).toString());
-
-// Define condition values to match the database constraint
-const CONDITIONS = ["new", "like_new", "excellent", "good", "fair", "poor"];
-const CONDITION_LABELS: Record<string, string> = {
-  "new": "New",
-  "like_new": "Like New",
-  "excellent": "Excellent",
-  "good": "Good",
-  "fair": "Fair",
-  "poor": "Poor"
-};
+const formSchema = z.object({
+  title: z.string().min(2, {
+    message: "Title must be at least 2 characters.",
+  }),
+  make: z.string().min(2, {
+    message: "Make must be at least 2 characters.",
+  }),
+  model: z.string().min(2, {
+    message: "Model must be at least 2 characters.",
+  }),
+  year: z.string().refine((value) => {
+    const year = parseInt(value, 10);
+    return !isNaN(year) && year >= 1900 && year <= new Date().getFullYear();
+  }, {
+    message: "Year must be a valid number between 1900 and the current year.",
+  }),
+  price: z.string().refine((value) => {
+    const price = parseInt(value, 10);
+    return !isNaN(price) && price > 0;
+  }, {
+    message: "Price must be a valid number greater than 0.",
+  }),
+  description: z.string().min(10, {
+    message: "Description must be at least 10 characters.",
+  }),
+  condition: z.enum(["new", "like_new", "excellent", "good", "fair", "poor"]),
+  image: z.any().optional(),
+});
 
 const PostCarPage = () => {
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  const { id } = useParams();
   const { user } = useAuth();
-  const [image, setImage] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [selectedMake, setSelectedMake] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { id: carId } = useParams<{ id: string }>();
+  const [isEditing, setIsEditing] = useState(false);
+  const [existingCar, setExistingCar] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  
-  // Initialize form
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (carId) {
+      setIsEditing(true);
+      fetchCarDetails(carId);
+    } else {
+      setIsEditing(false);
+      setExistingCar(null);
+    }
+  }, [carId]);
+
+  const fetchCarDetails = async (id: string) => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('cars')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        console.error("Error fetching car details:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to fetch car details. Please try again.",
+        });
+      } else {
+        setExistingCar(data);
+        setImageUrl(data.image_url || null);
+        form.setValue("title", data.title);
+        form.setValue("make", data.make);
+        form.setValue("model", data.model);
+        form.setValue("year", data.year.toString());
+        form.setValue("price", data.price.toString());
+        form.setValue("description", data.description);
+        form.setValue("condition", data.condition);
+      }
+    } catch (error: any) {
+      console.error("Error fetching car details:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to fetch car details. Please try again.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
       make: "",
       model: "",
-      year: new Date().getFullYear().toString(),
+      year: "",
       price: "",
       description: "",
-      condition: "good",
+      condition: "new",
     },
+    mode: "onChange",
   });
 
-  // Check if user is authenticated
-  useEffect(() => {
-    if (!user && !isLoading) {
-      toast({
-        variant: "destructive",
-        title: "Authentication required",
-        description: "You need to log in to post or edit car listings.",
-      });
-      navigate("/auth?tab=login");
-    }
-  }, [user, isLoading, navigate, toast]);
-
-  // Fetch car data if in edit mode
-  useEffect(() => {
-    const fetchCarData = async () => {
-      if (id && user) {
-        setIsEditMode(true);
-        setIsLoading(true);
-        
-        try {
-          const { data, error } = await supabase
-            .from('cars')
-            .select('*')
-            .eq('id', id)
-            .eq('user_id', user.id)
-            .single();
-            
-          if (error) {
-            throw error;
-          }
-          
-          if (data) {
-            // Populate form with existing data
-            form.setValue('title', data.title);
-            form.setValue('make', data.make);
-            setSelectedMake(data.make);
-            form.setValue('model', data.model);
-            form.setValue('year', data.year.toString());
-            form.setValue('price', data.price.toString());
-            form.setValue('description', data.description);
-            form.setValue('condition', data.condition);
-            
-            // Set image preview if available
-            if (data.image_url) {
-              setPreviewUrl(data.image_url);
-            }
-          }
-        } catch (error) {
-          console.error('Error fetching car data:', error);
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to load car data. Please try again.",
-          });
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    };
-    
-    fetchCarData();
-  }, [id, user, form, toast]);
-
-  // Handle image selection
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setImage(file);
-      
-      // Create a preview URL
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Form submission handler
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!user) {
       toast({
         variant: "destructive",
         title: "Authentication required",
-        description: "You need to log in to post or edit car listings.",
+        description: "You must be logged in to post a car.",
       });
-      navigate("/auth?tab=login");
       return;
     }
-    
+
+    setIsSubmitting(true);
+    setSubmitError("");
+
     try {
-      setIsLoading(true);
-      
-      // Upload image to Supabase Storage if there's a new image
-      let imageUrl = previewUrl;
-      if (image) {
-        // Create a unique filename
-        const fileExt = image.name.split('.').pop();
-        const fileName = `${uuidv4()}.${fileExt}`;
-        const filePath = `${user.id}/${fileName}`;
-        
-        // Check if 'cars' bucket exists, if not create it
-        const { data: buckets } = await supabase.storage.listBuckets();
-        if (!buckets?.find(b => b.name === 'car-images')) {
-          await supabase.storage.createBucket('car-images', {
-            public: true,
-            fileSizeLimit: 5242880 // 5MB
-          });
+      let uploadedImageUrl = imageUrl;
+
+      if (values.image) {
+        const imageFile = values.image instanceof File ? values.image : values.image[0];
+
+        if (!imageFile) {
+          console.warn("No image file selected.");
+        } else {
+          // Validate image type
+          const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif'];
+          if (!allowedImageTypes.includes(imageFile.type)) {
+            toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Invalid image format. Only JPEG, PNG, and GIF are allowed."
+            });
+            setIsSubmitting(false);
+            return;
+          }
+
+          // Validate image size (max 5MB)
+          if (imageFile.size > 5 * 1024 * 1024) {
+            toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Image size exceeds the limit of 5MB."
+            });
+            setIsSubmitting(false);
+            return;
+          }
+
+          const timestamp = new Date().getTime();
+          const random = Math.floor(Math.random() * 1000);
+          const uniqueFileName = `${timestamp}-${random}-${imageFile.name}`;
+
+          const { data, error } = await supabase.storage
+            .from('car-images')
+            .upload(uniqueFileName, imageFile, {
+              cacheControl: '3600',
+              upsert: false
+            });
+
+          if (error) {
+            console.error("Error uploading image:", error);
+            toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Failed to upload image. Please try again."
+            });
+            setIsSubmitting(false);
+            return;
+          }
+
+          uploadedImageUrl = `https://pcyuwktvexjrzuiusilt.supabase.co/storage/v1/object/public/car-images/${data.path}`;
+          setImageUrl(uploadedImageUrl);
         }
-        
-        // Upload the file
-        const { error: uploadError, data: uploadData } = await supabase.storage
-          .from('car-images')
-          .upload(filePath, image);
-          
-        if (uploadError) {
-          throw uploadError;
-        }
-        
-        // Get the public URL
-        const { data: urlData } = supabase.storage
-          .from('car-images')
-          .getPublicUrl(filePath);
-          
-        imageUrl = urlData.publicUrl;
       }
       
       // Prepare car data - ensure condition value matches database constraints
@@ -257,19 +224,19 @@ const PostCarPage = () => {
         description: values.description,
         condition: values.condition,
         user_id: user.id,
-        image_url: imageUrl,
+        image_url: uploadedImageUrl,
       };
       
       console.log("Submitting car data:", carData);
       
       let result;
       
-      if (isEditMode) {
+      if (isEditing && carId) {
         // Update existing car
         result = await supabase
           .from('cars')
           .update(carData)
-          .eq('id', id)
+          .eq('id', carId)
           .eq('user_id', user.id);
       } else {
         // Insert new car
@@ -282,11 +249,13 @@ const PostCarPage = () => {
         throw result.error;
       }
       
-      // Show success message
+      setIsSubmitting(false);
+      form.reset();
+      
       toast({
-        title: isEditMode ? "Car listing updated!" : "Car listing created!",
-        description: isEditMode 
-          ? "Your car has been successfully updated."
+        title: "Success!",
+        description: isEditing 
+          ? "Your car listing has been updated successfully."
           : "Your car has been successfully posted for sale.",
       });
       
@@ -297,208 +266,102 @@ const PostCarPage = () => {
       }, 500);
       
     } catch (error: any) {
-      console.error("Error creating/updating listing:", error);
+      console.error("Error submitting form:", error);
+      setSubmitError(error.message || "An unexpected error occurred.");
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "There was a problem with your listing. Please try again.",
+        description: error.message || "Failed to post car. Please try again.",
       });
-    } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-3xl mx-auto">
-          <h1 className="text-3xl font-bold mb-2">
-            {isEditMode ? "Edit Your Car Listing" : "Post a Car for Sale"}
+        <div className="max-w-2xl mx-auto">
+          <h1 className="text-3xl font-bold mb-6">
+            {isEditing ? "Edit Car Listing" : "Post a Car for Sale"}
           </h1>
-          <p className="text-muted-foreground mb-8">
-            {isEditMode 
-              ? "Update the details of your car listing below."
-              : "Fill out the form below to list your car on Street Fleet Market."}
-          </p>
-
-          {isLoading && !form.formState.isSubmitting ? (
+          {isLoading ? (
             <div className="space-y-4">
-              <div className="h-8 bg-gray-200 rounded w-1/3 animate-pulse"></div>
-              <div className="h-10 bg-gray-200 rounded w-full animate-pulse"></div>
-              <div className="h-10 bg-gray-200 rounded w-full animate-pulse"></div>
-              <div className="h-10 bg-gray-200 rounded w-full animate-pulse"></div>
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-10 w-full" />
             </div>
           ) : (
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                {/* Title */}
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField
                   control={form.control}
                   name="title"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Listing Title</FormLabel>
+                      <FormLabel>Title</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g. 2020 Toyota Camry - Low Miles" {...field} />
+                        <Input placeholder="e.g., 2015 Honda Civic" {...field} />
                       </FormControl>
-                      <FormDescription>
-                        A clear, descriptive title helps your listing stand out.
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-
-                {/* Basic Info: Make, Model, Year, Condition */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="make"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Make</FormLabel>
-                        <Select 
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            setSelectedMake(value);
-                            // Reset model when make changes
-                            form.setValue("model", "");
-                          }}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select make" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {MAKES.map((make) => (
-                              <SelectItem key={make} value={make}>
-                                {make}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="model"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Model</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          disabled={!selectedMake}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder={selectedMake ? "Select model" : "Select make first"} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {selectedMake && 
-                              MODELS_BY_MAKE[selectedMake]?.map((model) => (
-                                <SelectItem key={model} value={model}>
-                                  {model}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="year"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Year</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select year" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {YEARS.reverse().map((year) => (
-                              <SelectItem key={year} value={year}>
-                                {year}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="condition"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Condition</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select condition" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {CONDITIONS.map((condition) => (
-                              <SelectItem key={condition} value={condition}>
-                                {CONDITION_LABELS[condition]}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                {/* Price */}
+                <FormField
+                  control={form.control}
+                  name="make"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Make</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., Honda" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="model"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Model</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., Civic" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="year"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Year</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., 2015" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="price"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Price (USD)</FormLabel>
+                      <FormLabel>Price</FormLabel>
                       <FormControl>
-                        <div className="relative">
-                          <span className="absolute left-3 top-2.5 text-gray-500">$</span>
-                          <Input 
-                            type="number" 
-                            min="0" 
-                            placeholder="e.g. 15000" 
-                            className="pl-7" 
-                            {...field} 
-                          />
-                        </div>
+                        <Input placeholder="e.g., 15000" {...field} />
                       </FormControl>
-                      <FormDescription>
-                        Enter your asking price in US dollars. No commas or decimal points.
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-
-                {/* Description */}
                 <FormField
                   control={form.control}
                   name="description"
@@ -506,96 +369,91 @@ const PostCarPage = () => {
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Describe your car's condition, features, history, etc."
-                          className="min-h-32"
-                          {...field} 
+                        <Textarea
+                          placeholder="Describe the car's condition, features, etc."
+                          className="resize-none"
+                          {...field}
                         />
                       </FormControl>
-                      <FormDescription>
-                        Include details about condition, features, maintenance history, and reason for selling.
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-
-                {/* Image Upload */}
-                <div className="space-y-3">
-                  <FormLabel>Car Images</FormLabel>
-                  <div className="border-2 border-dashed rounded-lg p-6 text-center">
-                    {previewUrl ? (
-                      <div className="space-y-4">
-                        <img 
-                          src={previewUrl} 
-                          alt="Car preview" 
-                          className="mx-auto max-h-60 object-contain" 
-                        />
-                        <Button type="button" variant="outline" onClick={() => {
-                          setImage(null);
-                          setPreviewUrl(null);
-                        }}>
-                          Remove Image
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <div className="flex flex-col items-center justify-center">
-                          <Upload className="h-12 w-12 text-gray-400 mb-2" />
-                          <p className="text-lg font-medium">Drag and drop or click to upload</p>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            JPG, PNG or WEBP (max. 5MB)
-                          </p>
-                        </div>
+                <FormField
+                  control={form.control}
+                  name="condition"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Condition</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a condition" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectGroup>
+                            {conditionOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="image"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Image</FormLabel>
+                      <FormControl>
                         <Input
-                          id="car-image"
                           type="file"
                           accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            form.setValue("image", file);
+                          }}
+                          id="image-upload"
                           className="hidden"
-                          onChange={handleImageChange}
                         />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => document.getElementById("car-image")?.click()}
-                        >
-                          Select Image
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                  <FormDescription>
-                    A good quality photo increases your chances of selling quickly.
-                  </FormDescription>
-                </div>
-                
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Important</AlertTitle>
-                  <AlertDescription>
-                    By posting your car, you agree to our terms of service and confirm that all 
-                    information provided is accurate and truthful.
-                  </AlertDescription>
-                </Alert>
-
-                <div className="flex justify-end space-x-4 pt-4">
-                  <Button type="button" variant="outline" onClick={() => navigate(-1)}>
-                    Cancel
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    className="bg-brand-orange hover:bg-opacity-90"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      "Saving..."
-                    ) : isEditMode ? (
-                      "Save Changes"
-                    ) : (
-                      "Post Car for Sale"
-                    )}
-                  </Button>
-                </div>
+                      </FormControl>
+                      <Button variant="outline" asChild>
+                        <Label htmlFor="image-upload" className="cursor-pointer">
+                          {imageUrl ? "Change Image" : "Upload an Image"}
+                          <ImageIcon className="h-4 w-4 ml-2" />
+                        </Label>
+                      </Button>
+                      {imageUrl && (
+                        <div className="mt-2">
+                          <img
+                            src={imageUrl}
+                            alt="Car Preview"
+                            className="max-h-40 rounded-md object-contain"
+                          />
+                        </div>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {submitError && (
+                  <p className="text-red-500 text-sm">{submitError}</p>
+                )}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    "Submitting..."
+                  ) : isEditing ? (
+                    "Update Listing"
+                  ) : (
+                    "Post Car"
+                  )}
+                </Button>
               </form>
             </Form>
           )}
