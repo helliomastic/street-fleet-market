@@ -8,7 +8,6 @@ import Layout from '@/components/layout/Layout';
 import { 
   Form, 
   FormControl, 
-  FormDescription, 
   FormField, 
   FormItem, 
   FormLabel, 
@@ -46,17 +45,16 @@ const ContactPage = () => {
   const onSubmit = async (data: ContactFormData) => {
     setIsSubmitting(true);
     try {
-      // Ensure all required fields are present in the submission
-      const submission = {
+      const { error } = await supabase.from('contact_submissions').insert({
         name: data.name,
         email: data.email,
         subject: data.subject,
         message: data.message
-      };
+      });
       
-      const { error } = await supabase.from('contact_submissions').insert(submission);
-      
-      if (error) throw error;
+      if (error) {
+        throw new Error(error.message);
+      }
 
       toast({
         title: "Message Sent Successfully",
@@ -66,12 +64,13 @@ const ContactPage = () => {
 
       form.reset();
     } catch (error) {
+      console.error('Contact form submission error:', error);
+      
       toast({
         title: "Error Sending Message",
-        description: "Please try again later.",
+        description: error instanceof Error ? error.message : "Please try again later.",
         variant: "destructive"
       });
-      console.error('Contact form submission error:', error);
     } finally {
       setIsSubmitting(false);
     }
