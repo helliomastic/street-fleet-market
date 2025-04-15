@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -26,7 +27,7 @@ import {
 } from "@/components/ui/form";
 import { useAuth } from "@/context/AuthContext";
 import { supabase, CarCondition, isValidCarCondition } from "@/integrations/supabase/client";
-import { ImageIcon } from "lucide-react";
+import { ImageIcon, UploadIcon } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -78,6 +79,8 @@ const PostCarPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [localImagePreview, setLocalImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     if (carId) {
@@ -151,6 +154,24 @@ const PostCarPage = () => {
     mode: "onChange",
   });
 
+  // Handle file input change to generate local preview
+  const handleImageChange = (file: File | null) => {
+    if (!file) {
+      setLocalImagePreview(null);
+      return;
+    }
+
+    // Create a local preview URL
+    const objectUrl = URL.createObjectURL(file);
+    setLocalImagePreview(objectUrl);
+    
+    // Set the value in the form
+    form.setValue("image", file);
+
+    // Return a cleanup function to revoke the object URL
+    return () => URL.revokeObjectURL(objectUrl);
+  };
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!user) {
       toast({
@@ -162,6 +183,7 @@ const PostCarPage = () => {
     }
 
     setIsSubmitting(true);
+    setIsUploading(true);
     setSubmitError("");
 
     try {
@@ -181,6 +203,7 @@ const PostCarPage = () => {
               description: "Invalid image format. Only JPEG, PNG, and GIF are allowed."
             });
             setIsSubmitting(false);
+            setIsUploading(false);
             return;
           }
 
@@ -191,12 +214,18 @@ const PostCarPage = () => {
               description: "Image size exceeds the limit of 5MB."
             });
             setIsSubmitting(false);
+            setIsUploading(false);
             return;
           }
 
           const timestamp = new Date().getTime();
           const random = Math.floor(Math.random() * 1000);
           const uniqueFileName = `${timestamp}-${random}-${imageFile.name}`;
+
+          toast({
+            title: "Uploading image...",
+            description: "Please wait while your image uploads.",
+          });
 
           const { data, error } = await supabase.storage
             .from('car-images')
@@ -210,14 +239,20 @@ const PostCarPage = () => {
             toast({
               variant: "destructive",
               title: "Error",
-              description: "Failed to upload image. Please try again."
+              description: "Failed to upload image: " + error.message
             });
             setIsSubmitting(false);
+            setIsUploading(false);
             return;
           }
 
           uploadedImageUrl = `https://pcyuwktvexjrzuiusilt.supabase.co/storage/v1/object/public/car-images/${data.path}`;
           setImageUrl(uploadedImageUrl);
+          
+          toast({
+            title: "Image uploaded",
+            description: "Your image has been uploaded successfully.",
+          });
         }
       }
       
@@ -262,6 +297,7 @@ const PostCarPage = () => {
       }
       
       setIsSubmitting(false);
+      setIsUploading(false);
       form.reset();
       
       toast({
@@ -284,6 +320,7 @@ const PostCarPage = () => {
         description: error.message || "Failed to post car. Please try again.",
       });
       setIsSubmitting(false);
+      setIsUploading(false);
     }
   };
 
@@ -426,26 +463,42 @@ const PostCarPage = () => {
                           type="file"
                           accept="image/*"
                           onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            form.setValue("image", file);
+                            const file = e.target.files?.[0] || null;
+                            handleImageChange(file);
                           }}
                           id="image-upload"
                           className="hidden"
                         />
                       </FormControl>
-                      <Button variant="outline" asChild>
-                        <Label htmlFor="image-upload" className="cursor-pointer">
-                          {imageUrl ? "Change Image" : "Upload an Image"}
-                          <ImageIcon className="h-4 w-4 ml-2" />
-                        </Label>
-                      </Button>
-                      {imageUrl && (
-                        <div className="mt-2">
+                      <div className="flex items-center space-x-4">
+                        <Button 
+                          variant="outline" 
+                          type="button" 
+                          asChild
+                          className={`${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          disabled={isUploading}
+                        >
+                          <Label htmlFor="image-upload" className="cursor-pointer">
+                            {imageUrl || localImagePreview ? "Change Image" : "Upload an Image"}
+                            <UploadIcon className="h-4 w-4 ml-2" />
+                          </Label>
+                        </Button>
+                        {isUploading && (
+                          <span className="text-sm text-muted-foreground animate-pulse">
+                            Uploading...
+                          </span>
+                        )}
+                      </div>
+                      {(imageUrl || localImagePreview) && (
+                        <div className="mt-4 border rounded-md p-4 relative">
                           <img
-                            src={imageUrl}
+                            src={localImagePreview || imageUrl || ""}
                             alt="Car Preview"
-                            className="max-h-40 rounded-md object-contain"
+                            className="max-h-60 w-full rounded-md object-contain"
                           />
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {localImagePreview && !imageUrl ? "Image preview (not uploaded yet)" : "Uploaded image"}
+                          </p>
                         </div>
                       )}
                       <FormMessage />
@@ -455,9 +508,18 @@ const PostCarPage = () => {
                 {submitError && (
                   <p className="text-red-500 text-sm">{submitError}</p>
                 )}
-                <Button type="submit" disabled={isSubmitting}>
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting}
+                  className={isSubmitting ? "opacity-70" : ""}
+                >
                   {isSubmitting ? (
-                    "Submitting..."
+                    <>
+                      <span className="mr-2">
+                        {isUploading ? "Uploading..." : "Submitting..."}
+                      </span>
+                      <div className="h-4 w-4 border-2 border-t-transparent border-white rounded-full animate-spin" />
+                    </>
                   ) : isEditing ? (
                     "Update Listing"
                   ) : (
