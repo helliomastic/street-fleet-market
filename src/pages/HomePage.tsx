@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
@@ -106,6 +107,9 @@ const HomePage = () => {
       channelRef.current = null;
     }
     
+    // Initial fetch of listings
+    fetchListings();
+    
     // Create a new channel with a specific channel name
     const channel = supabase
       .channel('cars-realtime-updates')
@@ -124,9 +128,6 @@ const HomePage = () => {
     
     // Store channel reference for cleanup
     channelRef.current = channel;
-    
-    // Initial fetch of listings
-    fetchListings();
     
     // Cleanup function
     return () => {
