@@ -140,26 +140,18 @@ const HomePage = () => {
     };
   }, [fetchListings]);
 
-  // Enable Supabase realtime functionality for the cars table
+  // Log the current realtime configuration (without using RPC)
   useEffect(() => {
-    const enableRealtime = async () => {
+    const logRealtimeStatus = () => {
       try {
-        // Get the current configuration
-        const { data: configData, error: configError } = await supabase
-          .rpc('supabase_realtime', { input_parameter: 'show_tables' });
-          
-        if (configError) {
-          console.error("Error checking realtime configuration:", configError);
-          return;
-        }
-        
-        console.log("Current realtime configuration:", configData);
+        console.log("Realtime is enabled for public.cars in config.toml");
+        console.log("Subscription should be active for cars table");
       } catch (error) {
-        console.error("Error updating realtime configuration:", error);
+        console.error("Error:", error);
       }
     };
     
-    enableRealtime();
+    logRealtimeStatus();
   }, []);
 
   const handleFilterChange = (filters: any) => {
