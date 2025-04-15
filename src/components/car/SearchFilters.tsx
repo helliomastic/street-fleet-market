@@ -52,8 +52,11 @@ const SearchFilters = forwardRef<any, SearchFiltersProps>(({ onFilterChange }, r
   // Expose resetFilters method to parent component
   useImperativeHandle(ref, () => ({
     resetFilters: () => {
+      console.log("Resetting filters in SearchFilters component");
       setSearchTerm("");
       setFilters(DEFAULT_FILTERS);
+      // Immediately trigger filter change with default values
+      onFilterChange({ searchTerm: "", ...DEFAULT_FILTERS });
     }
   }));
 

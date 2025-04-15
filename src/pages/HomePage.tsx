@@ -180,6 +180,8 @@ const HomePage = () => {
 
   // Function to reset filters and scroll to listings
   const resetFiltersAndScroll = () => {
+    console.log("Resetting filters and scrolling to listings");
+    
     // Reset filters to defaults by setting filteredListings back to all listings
     setFilteredListings(listings);
     
@@ -188,8 +190,10 @@ const HomePage = () => {
       searchFiltersRef.current.resetFilters();
     }
     
-    // Scroll to listings section
-    listingsRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Scroll to listings section with a slight delay to ensure DOM updates
+    setTimeout(() => {
+      listingsRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
   };
 
   const goToSellCar = () => {
