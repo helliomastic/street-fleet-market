@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Car, MessageSquare, User } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { MessagesTab } from "@/components/admin/MessagesTab";
+import { MessagesTab } from "@/components/messages/MessagesTab";
 import { 
   AlertDialog,
   AlertDialogAction,
