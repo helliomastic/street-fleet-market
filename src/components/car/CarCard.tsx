@@ -79,52 +79,29 @@ const CarCard = ({ car }: CarCardProps) => {
       
       console.log("Deleting car with ID:", car.id);
       
-      // Explicitly check if there are messages for this car first
-      const { data: messageCheck, error: checkError } = await supabase
+      // First delete all messages related to this car
+      const { error: messagesError } = await supabase
         .from('messages')
-        .select('id')
+        .delete()
         .eq('car_id', car.id);
         
-      if (checkError) {
-        console.error("Error checking for messages:", checkError);
+      if (messagesError) {
+        console.error("Error deleting related messages:", messagesError);
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Failed to check for messages: " + checkError.message
+          description: "Failed to delete related messages: " + messagesError.message
         });
         setIsDeleting(false);
         return;
       }
       
-      console.log(`Found ${messageCheck?.length || 0} messages to delete for car ${car.id}`);
-      
-      // Only try to delete messages if there are any
-      if (messageCheck && messageCheck.length > 0) {
-        const { error: messagesError } = await supabase
-          .from('messages')
-          .delete()
-          .eq('car_id', car.id);
-          
-        if (messagesError) {
-          console.error("Error deleting related messages:", messagesError);
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to delete related messages: " + messagesError.message
-          });
-          setIsDeleting(false);
-          return;
-        }
-        
-        console.log("Successfully deleted messages for car:", car.id);
-      }
+      console.log("Successfully deleted messages for car:", car.id);
       
       // Add a small delay to ensure database consistency
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // After messages are deleted (or if there were none), delete the car
-      console.log("Now deleting car with ID:", car.id);
-      
+      // Now delete the car listing
       const { error } = await supabase
         .from('cars')
         .delete()
@@ -149,7 +126,7 @@ const CarCard = ({ car }: CarCardProps) => {
         description: "Your car listing has been successfully deleted.",
       });
       
-      // After successful deletion, you might want to redirect or refresh
+      // After successful deletion, redirect or refresh
       if (window.location.pathname.includes(`/car/${car.id}`)) {
         navigate('/');
       } else if (window.location.pathname.includes('/dashboard')) {

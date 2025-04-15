@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -140,31 +139,8 @@ export const CarListingComponent = ({ cars, loadingCars, fetchCars }: CarListing
     try {
       setDeletingAll(true);
       
-      // Get all car IDs first
-      const { data: carIds, error: carIdError } = await supabase
-        .from('cars')
-        .select('id');
-        
-      if (carIdError) {
-        console.error("Error fetching car IDs:", carIdError);
-        toast({
-          title: "Error",
-          description: "Failed to fetch car IDs: " + carIdError.message,
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      // If there are no cars, no need to continue
-      if (!carIds || carIds.length === 0) {
-        toast({
-          title: "Info",
-          description: "No car listings to delete",
-        });
-        return;
-      }
-      
       // First, delete ALL messages in the messages table
+      console.log("Deleting all messages first");
       const { error: allMessagesError } = await supabase
         .from('messages')
         .delete()

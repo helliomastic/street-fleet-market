@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Edit, Trash2 } from "lucide-react";
 import { 
@@ -30,6 +29,7 @@ export const CarListItem = ({ car, onEdit, fetchCars }: CarListItemProps) => {
       setUpdating(true);
       
       // First delete all messages related to this car
+      console.log("Deleting messages for car:", id);
       const { error: messagesError } = await supabase
         .from('messages')
         .delete()
