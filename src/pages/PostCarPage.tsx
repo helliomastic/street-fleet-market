@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -30,6 +31,9 @@ import { ImageIcon } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { Skeleton } from "@/components/ui/skeleton";
 
+// Define the condition type to match the expected enum values
+type CarCondition = "new" | "like_new" | "excellent" | "good" | "fair" | "poor";
+
 const conditionOptions = [
   { value: "new", label: "New" },
   { value: "like_new", label: "Like New" },
@@ -37,7 +41,7 @@ const conditionOptions = [
   { value: "good", label: "Good" },
   { value: "fair", label: "Fair" },
   { value: "poor", label: "Poor" },
-];
+] as const;
 
 const formSchema = z.object({
   title: z.string().min(2, {
@@ -108,13 +112,17 @@ const PostCarPage = () => {
       } else {
         setExistingCar(data);
         setImageUrl(data.image_url || null);
+        
+        // Ensure the condition value is one of the allowed enum values
+        const carCondition = data.condition as CarCondition;
+        
         form.setValue("title", data.title);
         form.setValue("make", data.make);
         form.setValue("model", data.model);
         form.setValue("year", data.year.toString());
         form.setValue("price", data.price.toString());
         form.setValue("description", data.description);
-        form.setValue("condition", data.condition);
+        form.setValue("condition", carCondition);
       }
     } catch (error: any) {
       console.error("Error fetching car details:", error);
@@ -137,7 +145,7 @@ const PostCarPage = () => {
       year: "",
       price: "",
       description: "",
-      condition: "new",
+      condition: "new" as CarCondition,
     },
     mode: "onChange",
   });
@@ -214,7 +222,10 @@ const PostCarPage = () => {
         }
       }
       
-      // Prepare car data - ensure condition value matches database constraints
+      // Ensure the condition value is properly typed as CarCondition
+      const condition = values.condition as CarCondition;
+      
+      // Prepare car data with proper types
       const carData = {
         title: values.title,
         make: values.make,
@@ -222,7 +233,7 @@ const PostCarPage = () => {
         year: parseInt(values.year),
         price: parseInt(values.price),
         description: values.description,
-        condition: values.condition,
+        condition: condition,
         user_id: user.id,
         image_url: uploadedImageUrl,
       };
