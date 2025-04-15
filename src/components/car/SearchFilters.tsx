@@ -48,6 +48,7 @@ const SearchFilters = forwardRef<any, SearchFiltersProps>(({ onFilterChange }, r
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [isReset, setIsReset] = useState(false);
 
   // Expose resetFilters method to parent component
   useImperativeHandle(ref, () => ({
@@ -55,10 +56,18 @@ const SearchFilters = forwardRef<any, SearchFiltersProps>(({ onFilterChange }, r
       console.log("Resetting filters in SearchFilters component");
       setSearchTerm("");
       setFilters(DEFAULT_FILTERS);
+      setIsReset(true);
       // Immediately trigger filter change with default values
       onFilterChange({ searchTerm: "", ...DEFAULT_FILTERS });
     }
   }));
+
+  // When filters are reset, mark it so we know
+  useEffect(() => {
+    if (isReset) {
+      setIsReset(false);
+    }
+  }, [isReset]);
 
   // Apply filters when they change
   useEffect(() => {
@@ -75,6 +84,8 @@ const SearchFilters = forwardRef<any, SearchFiltersProps>(({ onFilterChange }, r
   const handleReset = () => {
     setSearchTerm("");
     setFilters(DEFAULT_FILTERS);
+    setIsReset(true);
+    onFilterChange({ searchTerm: "", ...DEFAULT_FILTERS });
   };
 
   const FiltersContent = () => (

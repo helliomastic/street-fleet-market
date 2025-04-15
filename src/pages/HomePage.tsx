@@ -17,6 +17,7 @@ const HomePage = () => {
   const listingsRef = useRef<HTMLDivElement>(null);
   const searchFiltersRef = useRef<any>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const initialFetchDoneRef = useRef<boolean>(false);
   const navigate = useNavigate();
 
   // Memoized function to fetch car listings
@@ -86,6 +87,7 @@ const HomePage = () => {
       console.log("Formatted listings:", formattedListings);
       setListings(formattedListings);
       setFilteredListings(formattedListings);
+      initialFetchDoneRef.current = true;
     } catch (error) {
       console.error("Error fetching listings:", error);
       toast({
@@ -112,9 +114,10 @@ const HomePage = () => {
           channelRef.current = null;
         }
         
-        // Create a new channel
+        // Create a new channel with a unique name to avoid conflicts
+        const channelName = `cars-realtime-${Date.now()}`;
         const channel = supabase
-          .channel('public:cars')
+          .channel(channelName)
           .on('postgres_changes', { 
             event: '*',  // Listen to all events (INSERT, UPDATE, DELETE)
             schema: 'public', 
@@ -153,6 +156,10 @@ const HomePage = () => {
   }, [fetchListings]);
 
   const handleFilterChange = (filters: any) => {
+    if (!initialFetchDoneRef.current || listings.length === 0) {
+      return;
+    }
+    
     const { searchTerm, make, minYear, maxYear, priceRange } = filters;
     
     const filtered = listings.filter((car) => {
@@ -182,6 +189,11 @@ const HomePage = () => {
   const resetFiltersAndScroll = () => {
     console.log("Resetting filters and scrolling to listings");
     
+    if (listings.length === 0) {
+      // If listings haven't been loaded yet, try to fetch them
+      fetchListings();
+    }
+    
     // Reset filters to defaults by setting filteredListings back to all listings
     setFilteredListings(listings);
     
@@ -199,6 +211,13 @@ const HomePage = () => {
   const goToSellCar = () => {
     navigate('/post-car');
   };
+
+  // Auto-reset filters when first loaded
+  useEffect(() => {
+    if (!loading && listings.length > 0) {
+      setFilteredListings(listings);
+    }
+  }, [loading, listings]);
 
   return (
     <Layout>
@@ -277,6 +296,14 @@ const HomePage = () => {
             <div className="text-center py-12">
               <h3 className="text-xl font-semibold mb-2">No cars match your search</h3>
               <p className="text-gray-500">Try adjusting your filters or search term</p>
+              {listings.length > 0 && (
+                <Button 
+                  className="mt-4 bg-brand-blue"
+                  onClick={resetFiltersAndScroll}
+                >
+                  Show All Listings
+                </Button>
+              )}
             </div>
           )}
         </div>
