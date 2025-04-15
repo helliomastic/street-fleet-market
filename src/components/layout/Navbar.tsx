@@ -25,12 +25,10 @@ const Navbar = () => {
   const { user, isLoading, signOut, isAdmin } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Close mobile menu when route changes
   useEffect(() => {
     setIsMenuOpen(false);
   }, [location.pathname]);
 
-  // Check for unread messages
   useEffect(() => {
     if (!user) return;
     
@@ -54,7 +52,6 @@ const Navbar = () => {
     
     fetchUnreadMessages();
     
-    // Set up subscription for new messages
     const channel = supabase
       .channel('public:messages')
       .on('postgres_changes', { 
@@ -63,7 +60,6 @@ const Navbar = () => {
         table: 'messages',
         filter: `recipient_id=eq.${user.id}`
       }, (payload) => {
-        // Update unread count when a new message is received
         setUnreadCount(prev => prev + 1);
       })
       .subscribe();
@@ -95,18 +91,23 @@ const Navbar = () => {
     <nav className="bg-brand-blue text-white shadow-md">
       <div className="container mx-auto px-4 py-3">
         <div className="flex justify-between items-center">
-          {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
             <Car className="h-6 w-6 text-brand-orange" />
             <span className="font-bold text-xl">Street Fleet</span>
           </Link>
 
-          {/* Desktop Navigation */}
           {!isMobile && (
             <div className="flex items-center space-x-6">
               <Link to="/" className="hover:text-brand-orange transition-colors">
                 Home
               </Link>
+              <Link to="/about" className="hover:text-brand-orange transition-colors">
+                About
+              </Link>
+              <Link to="/contact" className="hover:text-brand-orange transition-colors">
+                Contact
+              </Link>
+              
               {user && (
                 <>
                   <Link to="/dashboard" className="hover:text-brand-orange transition-colors flex items-center">
@@ -130,7 +131,6 @@ const Navbar = () => {
             </div>
           )}
 
-          {/* Auth buttons or user menu */}
           <div className="flex items-center">
             {isLoading ? (
               <div className="h-8 w-8 rounded-full bg-gray-300 animate-pulse"></div>
@@ -196,7 +196,6 @@ const Navbar = () => {
               </div>
             )}
 
-            {/* Mobile menu button */}
             {isMobile && (
               <Button
                 variant="ghost"
@@ -208,48 +207,54 @@ const Navbar = () => {
               </Button>
             )}
           </div>
-        </div>
 
-        {/* Mobile menu */}
-        {isMobile && isMenuOpen && (
-          <div className="pt-4 pb-3 border-t border-brand-lightBlue mt-3 animate-fade-in">
-            <div className="flex flex-col space-y-3">
-              <Link to="/" className="hover:text-brand-orange transition-colors">
-                Home
-              </Link>
-              {user && (
-                <>
-                  <Link to="/dashboard" className="hover:text-brand-orange transition-colors flex items-center">
-                    Dashboard
-                    {unreadCount > 0 && (
-                      <span className="ml-2 bg-red-500 text-white rounded-full px-2 py-0.5 text-xs">
-                        {unreadCount}
-                      </span>
-                    )}
-                  </Link>
-                  <Link to="/post-car" className="hover:text-brand-orange transition-colors">
-                    Post a Car
-                  </Link>
-                  {isAdmin && (
-                    <Link to="/admin" className="hover:text-brand-orange transition-colors">
-                      Admin Panel
+          {isMobile && isMenuOpen && (
+            <div className="pt-4 pb-3 border-t border-brand-lightBlue mt-3 animate-fade-in">
+              <div className="flex flex-col space-y-3">
+                <Link to="/" className="hover:text-brand-orange transition-colors">
+                  Home
+                </Link>
+                <Link to="/about" className="hover:text-brand-orange transition-colors">
+                  About
+                </Link>
+                <Link to="/contact" className="hover:text-brand-orange transition-colors">
+                  Contact
+                </Link>
+                
+                {user && (
+                  <>
+                    <Link to="/dashboard" className="hover:text-brand-orange transition-colors flex items-center">
+                      Dashboard
+                      {unreadCount > 0 && (
+                        <span className="ml-2 bg-red-500 text-white rounded-full px-2 py-0.5 text-xs">
+                          {unreadCount}
+                        </span>
+                      )}
                     </Link>
-                  )}
-                </>
-              )}
-              {!user && (
-                <>
-                  <Link to="/auth?tab=login" className="hover:text-brand-orange transition-colors">
-                    Login
-                  </Link>
-                  <Link to="/auth?tab=signup" className="hover:text-purple-600 hover:text-purple-700 transition-colors">
-                    Sign Up
-                  </Link>
-                </>
-              )}
+                    <Link to="/post-car" className="hover:text-brand-orange transition-colors">
+                      Post a Car
+                    </Link>
+                    {isAdmin && (
+                      <Link to="/admin" className="hover:text-brand-orange transition-colors">
+                        Admin Panel
+                      </Link>
+                    )}
+                  </>
+                )}
+                {!user && (
+                  <>
+                    <Link to="/auth?tab=login" className="hover:text-brand-orange transition-colors">
+                      Login
+                    </Link>
+                    <Link to="/auth?tab=signup" className="hover:text-purple-600 hover:text-purple-700 transition-colors">
+                      Sign Up
+                    </Link>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </nav>
   );

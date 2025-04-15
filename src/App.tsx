@@ -15,6 +15,9 @@ import AdminPage from "./pages/AdminPage";
 import CarDetailsPage from "./pages/CarDetailsPage";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
+// New pages
+import ContactPage from "./pages/ContactPage";
+import AboutPage from "./pages/AboutPage";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -72,6 +75,8 @@ const App = () => {
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/car/:id" element={<CarDetailsPage />} />
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/about" element={<AboutPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
