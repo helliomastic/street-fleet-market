@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -30,6 +29,8 @@ import { supabase, CarCondition, isValidCarCondition } from "@/integrations/supa
 import { ImageIcon, UploadIcon } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
 
 const conditionOptions = [
   { value: "new", label: "New" },
@@ -81,6 +82,7 @@ const PostCarPage = () => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [localImagePreview, setLocalImagePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
 
   useEffect(() => {
     if (carId) {
@@ -154,21 +156,29 @@ const PostCarPage = () => {
     mode: "onChange",
   });
 
-  // Handle file input change to generate local preview
   const handleImageChange = (file: File | null) => {
     if (!file) {
       setLocalImagePreview(null);
       return;
     }
 
-    // Create a local preview URL
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    console.log("File type:", file.type);
+    
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        variant: "destructive",
+        title: "Invalid file format",
+        description: `Only JPEG, PNG, and GIF are allowed. You uploaded: ${file.type}`,
+      });
+      return;
+    }
+
     const objectUrl = URL.createObjectURL(file);
     setLocalImagePreview(objectUrl);
     
-    // Set the value in the form
     form.setValue("image", file);
 
-    // Return a cleanup function to revoke the object URL
     return () => URL.revokeObjectURL(objectUrl);
   };
 
@@ -185,6 +195,7 @@ const PostCarPage = () => {
     setIsSubmitting(true);
     setIsUploading(true);
     setSubmitError("");
+    setUploadProgress(0);
 
     try {
       let uploadedImageUrl = imageUrl;
@@ -196,11 +207,13 @@ const PostCarPage = () => {
           console.warn("No image file selected.");
         } else {
           const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif'];
+          console.log("Uploading file of type:", imageFile.type);
+          
           if (!allowedImageTypes.includes(imageFile.type)) {
             toast({
               variant: "destructive",
               title: "Error",
-              description: "Invalid image format. Only JPEG, PNG, and GIF are allowed."
+              description: `Invalid image format: ${imageFile.type}. Only JPEG, PNG, and GIF are allowed.`
             });
             setIsSubmitting(false);
             setIsUploading(false);
@@ -227,12 +240,22 @@ const PostCarPage = () => {
             description: "Please wait while your image uploads.",
           });
 
+          const progressInterval = setInterval(() => {
+            setUploadProgress((prev) => {
+              const newProgress = prev + 10;
+              return newProgress > 90 ? 90 : newProgress;
+            });
+          }, 300);
+
           const { data, error } = await supabase.storage
             .from('car-images')
             .upload(uniqueFileName, imageFile, {
               cacheControl: '3600',
               upsert: false
             });
+
+          clearInterval(progressInterval);
+          setUploadProgress(100);
 
           if (error) {
             console.error("Error uploading image:", error);
@@ -461,7 +484,7 @@ const PostCarPage = () => {
                       <FormControl>
                         <Input
                           type="file"
-                          accept="image/*"
+                          accept="image/jpeg,image/png,image/gif"
                           onChange={(e) => {
                             const file = e.target.files?.[0] || null;
                             handleImageChange(file);
@@ -489,6 +512,24 @@ const PostCarPage = () => {
                           </span>
                         )}
                       </div>
+                      
+                      <Alert className="mt-2 bg-muted">
+                        <AlertTitle>Supported formats</AlertTitle>
+                        <AlertDescription>
+                          Only JPEG, PNG, and GIF images up to 5MB are supported.
+                        </AlertDescription>
+                      </Alert>
+                      
+                      {isUploading && uploadProgress > 0 && (
+                        <div className="mt-4">
+                          <div className="flex justify-between mb-1">
+                            <p className="text-sm font-medium">Upload progress</p>
+                            <p className="text-sm font-medium">{uploadProgress}%</p>
+                          </div>
+                          <Progress value={uploadProgress} className="w-full" />
+                        </div>
+                      )}
+                      
                       {(imageUrl || localImagePreview) && (
                         <div className="mt-4 border rounded-md p-4 relative">
                           <img
