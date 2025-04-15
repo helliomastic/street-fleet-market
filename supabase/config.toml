@@ -6,3 +6,5 @@ enabled = true
 
 [realtime.tables]
 public.messages = true
+public.cars = true
+

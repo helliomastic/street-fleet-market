@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
@@ -107,12 +106,14 @@ const HomePage = () => {
       channelRef.current = null;
     }
     
-    // Initial fetch of listings
-    fetchListings();
+    // First get existing listings
+    fetchListings().then(() => {
+      console.log("Initial listings fetch complete");
+    });
     
     // Create a new channel with a specific channel name
     const channel = supabase
-      .channel('cars-realtime-updates')
+      .channel('cars-realtime-changes')
       .on('postgres_changes', { 
         event: '*',  // Listen for all events (INSERT, UPDATE, DELETE)
         schema: 'public', 
@@ -138,6 +139,28 @@ const HomePage = () => {
       }
     };
   }, [fetchListings]);
+
+  // Enable Supabase realtime functionality for the cars table
+  useEffect(() => {
+    const enableRealtime = async () => {
+      try {
+        // Get the current configuration
+        const { data: configData, error: configError } = await supabase
+          .rpc('supabase_realtime', { input_parameter: 'show_tables' });
+          
+        if (configError) {
+          console.error("Error checking realtime configuration:", configError);
+          return;
+        }
+        
+        console.log("Current realtime configuration:", configData);
+      } catch (error) {
+        console.error("Error updating realtime configuration:", error);
+      }
+    };
+    
+    enableRealtime();
+  }, []);
 
   const handleFilterChange = (filters: any) => {
     const { searchTerm, make, minYear, maxYear, priceRange } = filters;
