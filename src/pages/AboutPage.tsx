@@ -2,14 +2,14 @@
 import React from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Team } from 'lucide-react';
+import { Users } from 'lucide-react';
 
 const AboutPage = () => {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6 text-brand-blue flex items-center">
-          <Team className="mr-3 text-brand-orange" />
+          <Users className="mr-3 text-brand-orange" />
           About Street Fleet Market
         </h1>
         

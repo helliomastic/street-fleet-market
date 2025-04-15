@@ -46,7 +46,15 @@ const ContactPage = () => {
   const onSubmit = async (data: ContactFormData) => {
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.from('contact_submissions').insert(data);
+      // Ensure all required fields are present in the submission
+      const submission = {
+        name: data.name,
+        email: data.email,
+        subject: data.subject,
+        message: data.message
+      };
+      
+      const { error } = await supabase.from('contact_submissions').insert(submission);
       
       if (error) throw error;
 
