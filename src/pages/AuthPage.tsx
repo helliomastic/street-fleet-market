@@ -1,11 +1,12 @@
+
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import Layout from "@/components/layout/Layout";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
@@ -39,8 +40,15 @@ const signupSchema = z.object({
 
 const AuthPage = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [signupSuccess, setSignupSuccess] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  
+  // Get the tab from URL query params
+  const queryParams = new URLSearchParams(location.search);
+  const tabFromUrl = queryParams.get('tab');
+  const defaultTab = tabFromUrl === 'signup' ? 'signup' : 'login';
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -92,6 +100,7 @@ const AuthPage = () => {
     try {
       setIsLoading(true);
       
+      // Changed to use signUp with autoConfirm false to prevent automatic login
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -99,6 +108,8 @@ const AuthPage = () => {
           data: {
             full_name: data.fullName,
           },
+          // Disable auto-login after signup
+          emailRedirectTo: `${window.location.origin}/auth?tab=login`,
         }
       });
 
@@ -106,44 +117,19 @@ const AuthPage = () => {
         throw signUpError;
       }
       
-      const createUserProfile = async (user: User, fullName: string) => {
-        try {
-          const username = user.email?.split('@')[0] || '';
-          
-          const profileData = {
-            id: user.id,
-            full_name: fullName || username,
-            username: username,
-            role: 'user'
-          } as any;
-          
-          const { error } = await supabase
-            .from('profiles')
-            .insert(profileData);
-            
-          if (error) {
-            console.error("Error creating profile:", error);
-          }
-        } catch (error) {
-          console.error("Error creating profile:", error);
-        }
-      };
-
-      createUserProfile(authData.user, data.fullName);
-
       toast({
         title: "Signup successful",
-        description: "Your account has been created successfully. You can now log in.",
+        description: "Your account has been created successfully. Please log in to continue.",
       });
       
-      if (authData.session) {
-        navigate("/dashboard");
-      } else {
-        loginForm.setValue("email", data.email);
-        loginForm.setValue("password", data.password);
-      }
-      
+      // Switch to login tab after successful signup
+      setSignupSuccess(true);
+      loginForm.setValue("email", data.email);
       signupForm.reset();
+      
+      // Update URL parameter to show login tab
+      navigate("/auth?tab=login");
+      
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -161,7 +147,7 @@ const AuthPage = () => {
         <div className="max-w-md mx-auto">
           <h1 className="text-3xl font-bold text-center mb-8">Welcome to Street Fleet</h1>
           
-          <Tabs defaultValue="login" className="w-full">
+          <Tabs defaultValue={defaultTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="login">Login</TabsTrigger>
               <TabsTrigger value="signup">Signup</TabsTrigger>
