@@ -105,6 +105,8 @@ const HomePage = () => {
       channelRef.current = null;
     }
     
+    console.log("Setting up realtime subscription for cars table");
+    
     // Create a new channel
     const channel = supabase
       .channel('cars-changes-' + Date.now()) // Use unique channel name
@@ -121,6 +123,8 @@ const HomePage = () => {
         console.log('Subscription status:', status);
         if (status !== 'SUBSCRIBED') {
           console.error('Failed to subscribe to car listings changes');
+        } else {
+          console.log('Successfully subscribed to car listings changes');
         }
       });
     
@@ -129,6 +133,7 @@ const HomePage = () => {
     
     return () => {
       if (channelRef.current) {
+        console.log('Removing channel subscription');
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
