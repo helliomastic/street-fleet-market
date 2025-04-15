@@ -1,17 +1,7 @@
 
 import { useState } from "react";
 import { Message } from "../types/MessageTypes";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Check, MessageSquare, Send } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { MessageDetail } from "@/components/messages/MessageDetail";
 
 interface AdminMessageDetailProps {
   message: Message | null;
@@ -30,74 +20,60 @@ export const AdminMessageDetail = ({
   onReplyTextChange,
   onSendReply
 }: AdminMessageDetailProps) => {
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  // Convert the admin message to the format expected by MessageDetail
+  const adaptedMessage = message ? {
+    ...message,
+    car: message.car || {
+      title: message.car_title || '',
+      make: message.car?.make || '',
+      model: message.car?.model || '',
+      year: message.car?.year || 0
+    },
+    sender_profile: message.sender_profile || { 
+      full_name: message.sender_name || null 
+    },
+    recipient_profile: message.recipient_profile || { 
+      full_name: message.recipient_name || null 
+    }
+  } : null;
+
+  // Custom send reply handler that uses the admin props
+  const handleSendReply = async (carId: string, recipientId: string, message: string) => {
+    if (message === replyText) {
+      await onSendReply();
+      return true;
+    }
+    return false;
   };
 
-  if (!message) {
-    return (
-      <Card className="h-full flex items-center justify-center">
-        <div className="text-center py-12">
-          <MessageSquare className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-lg font-medium text-gray-900">No message selected</h3>
-          <p className="mt-1 text-sm text-gray-500">Select a message from the list to view it here.</p>
-        </div>
-      </Card>
-    );
-  }
+  // Custom reply input handler for admin
+  const AdminReplyInput = () => (
+    <div className="w-full space-y-2">
+      <h3 className="font-medium">Reply</h3>
+      <div className="flex">
+        <input
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mr-2"
+          placeholder="Type your reply..."
+          value={replyText}
+          onChange={(e) => onReplyTextChange(e.target.value)}
+        />
+        <button 
+          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+          onClick={onSendReply} 
+          disabled={!replyText.trim() || sendingReply}
+        >
+          {sendingReply ? 'Sending...' : <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-send h-4 w-4"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>}
+        </button>
+      </div>
+    </div>
+  );
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader>
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle>
-              {message.recipient_id === userId 
-                ? `From: ${message.sender_name || message.sender_profile?.full_name || 'Anonymous'}` 
-                : `To: ${message.recipient_name || message.recipient_profile?.full_name || 'Anonymous'}`}
-            </CardTitle>
-            <CardDescription>
-              {message.car_title || `${message.car?.make} ${message.car?.model} ${message.car?.year}`}
-            </CardDescription>
-          </div>
-          <div className="text-sm text-gray-500">
-            {formatDate(message.created_at)}
-            {message.recipient_id === userId && message.read && (
-              <div className="flex items-center text-green-600 mt-1">
-                <Check className="h-4 w-4 mr-1" />
-                <span>Read</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="flex-grow">
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <p className="whitespace-pre-wrap">{message.message}</p>
-        </div>
-      </CardContent>
-      
-      <CardFooter className="border-t pt-4">
-        <div className="w-full space-y-2">
-          <h3 className="font-medium">Reply</h3>
-          <div className="flex">
-            <Input
-              placeholder="Type your reply..."
-              value={replyText}
-              onChange={(e) => onReplyTextChange(e.target.value)}
-              className="mr-2"
-            />
-            <Button 
-              onClick={onSendReply} 
-              disabled={!replyText.trim() || sendingReply}
-            >
-              {sendingReply ? 'Sending...' : <Send className="h-4 w-4" />}
-            </Button>
-          </div>
-        </div>
-      </CardFooter>
-    </Card>
+    <MessageDetail 
+      message={adaptedMessage as any} 
+      userId={userId}
+      onSendReply={handleSendReply}
+      customReplyInput={<AdminReplyInput />}
+    />
   );
 };

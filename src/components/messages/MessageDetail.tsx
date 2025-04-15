@@ -17,9 +17,15 @@ interface MessageDetailProps {
   message: Message | null;
   userId: string | undefined;
   onSendReply: (carId: string, recipientId: string, message: string) => Promise<boolean>;
+  customReplyInput?: React.ReactNode;
 }
 
-export const MessageDetail = ({ message, userId, onSendReply }: MessageDetailProps) => {
+export const MessageDetail = ({ 
+  message, 
+  userId, 
+  onSendReply,
+  customReplyInput
+}: MessageDetailProps) => {
   const [replyText, setReplyText] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
 
@@ -92,23 +98,27 @@ export const MessageDetail = ({ message, userId, onSendReply }: MessageDetailPro
       </CardContent>
       
       <CardFooter className="border-t pt-4">
-        <div className="w-full space-y-2">
-          <h3 className="font-medium">Reply</h3>
-          <div className="flex">
-            <Input
-              placeholder="Type your reply..."
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              className="mr-2"
-            />
-            <Button 
-              onClick={handleSendReply} 
-              disabled={!replyText.trim() || sendingReply}
-            >
-              {sendingReply ? 'Sending...' : <Send className="h-4 w-4" />}
-            </Button>
+        {customReplyInput ? (
+          customReplyInput
+        ) : (
+          <div className="w-full space-y-2">
+            <h3 className="font-medium">Reply</h3>
+            <div className="flex">
+              <Input
+                placeholder="Type your reply..."
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                className="mr-2"
+              />
+              <Button 
+                onClick={handleSendReply} 
+                disabled={!replyText.trim() || sendingReply}
+              >
+                {sendingReply ? 'Sending...' : <Send className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
       </CardFooter>
     </Card>
   );
