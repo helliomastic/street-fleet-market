@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,16 +35,27 @@ interface SearchFiltersProps {
   onFilterChange: (filters: any) => void;
 }
 
-const SearchFilters = ({ onFilterChange }: SearchFiltersProps) => {
+const DEFAULT_FILTERS = {
+  make: "All Makes",
+  minYear: CURRENT_YEAR - 15,
+  maxYear: CURRENT_YEAR,
+  priceRange: [5000, 50000] as [number, number]
+};
+
+// Using forwardRef to expose methods to parent component
+const SearchFilters = forwardRef<any, SearchFiltersProps>(({ onFilterChange }, ref) => {
   const isMobile = useIsMobile();
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filters, setFilters] = useState({
-    make: "All Makes",
-    minYear: CURRENT_YEAR - 15,
-    maxYear: CURRENT_YEAR,
-    priceRange: [5000, 50000] as [number, number]
-  });
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+
+  // Expose resetFilters method to parent component
+  useImperativeHandle(ref, () => ({
+    resetFilters: () => {
+      setSearchTerm("");
+      setFilters(DEFAULT_FILTERS);
+    }
+  }));
 
   // Apply filters when they change
   useEffect(() => {
@@ -60,12 +71,7 @@ const SearchFilters = ({ onFilterChange }: SearchFiltersProps) => {
 
   const handleReset = () => {
     setSearchTerm("");
-    setFilters({
-      make: "All Makes",
-      minYear: CURRENT_YEAR - 15,
-      maxYear: CURRENT_YEAR,
-      priceRange: [5000, 50000]
-    });
+    setFilters(DEFAULT_FILTERS);
   };
 
   const FiltersContent = () => (
@@ -265,6 +271,8 @@ const SearchFilters = ({ onFilterChange }: SearchFiltersProps) => {
       </div>
     </div>
   );
-};
+});
+
+SearchFilters.displayName = "SearchFilters";
 
 export default SearchFilters;

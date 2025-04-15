@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
@@ -14,6 +15,7 @@ const HomePage = () => {
   const [filteredListings, setFilteredListings] = useState<CarListing[]>([]);
   const [loading, setLoading] = useState(true);
   const listingsRef = useRef<HTMLDivElement>(null);
+  const searchFiltersRef = useRef<any>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const navigate = useNavigate();
 
@@ -176,7 +178,17 @@ const HomePage = () => {
     setFilteredListings(filtered);
   };
 
-  const scrollToListings = () => {
+  // Function to reset filters and scroll to listings
+  const resetFiltersAndScroll = () => {
+    // Reset filters to defaults by setting filteredListings back to all listings
+    setFilteredListings(listings);
+    
+    // If SearchFilters component exposes a reset method through ref, call it
+    if (searchFiltersRef.current && searchFiltersRef.current.resetFilters) {
+      searchFiltersRef.current.resetFilters();
+    }
+    
+    // Scroll to listings section
     listingsRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -200,7 +212,7 @@ const HomePage = () => {
             <div className="flex gap-4">
               <button 
                 className="px-6 py-3 bg-brand-orange rounded-lg font-medium hover:bg-opacity-90 transition-colors"
-                onClick={scrollToListings}
+                onClick={resetFiltersAndScroll}
               >
                 Browse Cars
               </button>
@@ -215,7 +227,10 @@ const HomePage = () => {
         </div>
 
         {/* Search & Filters */}
-        <SearchFilters onFilterChange={handleFilterChange} />
+        <SearchFilters 
+          onFilterChange={handleFilterChange} 
+          ref={searchFiltersRef}
+        />
 
         {/* Results */}
         <div ref={listingsRef}>
