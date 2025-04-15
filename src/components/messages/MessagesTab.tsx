@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
@@ -94,30 +95,35 @@ export default function MessagesTab() {
       // Get profile data for received messages
       const enhancedReceivedMessages = await Promise.all(
         (receivedData || []).map(async (msg) => {
-          // Get sender profile
-          const { data: senderData } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', msg.sender_id)
-            .maybeSingle();
-            
-          // Get recipient profile (should be the current user)
-          const { data: recipientData } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', msg.recipient_id)
-            .maybeSingle();
-            
-          return {
-            ...msg,
-            sender_profile: senderData || { full_name: 'Unknown User' },
-            recipient_profile: recipientData || { full_name: 'Unknown User' },
-            car: msg.car || { title: 'Unknown', make: 'Unknown', model: 'Unknown', year: 0 }
-          } as Message;
+          try {
+            // Get sender profile
+            const { data: senderData } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', msg.sender_id)
+              .maybeSingle();
+              
+            // Get recipient profile (should be the current user)
+            const { data: recipientData } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', msg.recipient_id)
+              .maybeSingle();
+              
+            return {
+              ...msg,
+              sender_profile: senderData || { full_name: 'Unknown User' },
+              recipient_profile: recipientData || { full_name: 'Unknown User' },
+              car: msg.car || { title: 'Unknown', make: 'Unknown', model: 'Unknown', year: 0 }
+            } as Message;
+          } catch (error) {
+            console.error("Error processing received message:", error);
+            return null;
+          }
         })
       );
       
-      setReceivedMessages(enhancedReceivedMessages);
+      setReceivedMessages(enhancedReceivedMessages.filter(Boolean) as Message[]);
       
       // Fetch sent messages
       const { data: sentData, error: sentError } = await supabase
@@ -148,30 +154,35 @@ export default function MessagesTab() {
       // Get profile data for sent messages
       const enhancedSentMessages = await Promise.all(
         (sentData || []).map(async (msg) => {
-          // Get sender profile (should be current user)
-          const { data: senderData } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', msg.sender_id)
-            .maybeSingle();
-            
-          // Get recipient profile
-          const { data: recipientData } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', msg.recipient_id)
-            .maybeSingle();
-            
-          return {
-            ...msg,
-            sender_profile: senderData || { full_name: 'Unknown User' },
-            recipient_profile: recipientData || { full_name: 'Unknown User' },
-            car: msg.car || { title: 'Unknown', make: 'Unknown', model: 'Unknown', year: 0 }
-          } as Message;
+          try {
+            // Get sender profile (should be current user)
+            const { data: senderData } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', msg.sender_id)
+              .maybeSingle();
+              
+            // Get recipient profile
+            const { data: recipientData } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', msg.recipient_id)
+              .maybeSingle();
+              
+            return {
+              ...msg,
+              sender_profile: senderData || { full_name: 'Unknown User' },
+              recipient_profile: recipientData || { full_name: 'Unknown User' },
+              car: msg.car || { title: 'Unknown', make: 'Unknown', model: 'Unknown', year: 0 }
+            } as Message;
+          } catch (error) {
+            console.error("Error processing sent message:", error);
+            return null;
+          }
         })
       );
       
-      setSentMessages(enhancedSentMessages);
+      setSentMessages(enhancedSentMessages.filter(Boolean) as Message[]);
       
     } catch (err: any) {
       console.error("Error fetching messages:", err);
@@ -188,7 +199,6 @@ export default function MessagesTab() {
   }, [user]);
 
   const handleRefresh = () => {
-    setRefreshing(true);
     fetchMessages();
   };
 
@@ -198,7 +208,7 @@ export default function MessagesTab() {
       
       // Set up realtime subscription for new messages
       const channel = supabase
-        .channel('public:messages')
+        .channel('messages-channel')
         .on('postgres_changes', { 
           event: 'INSERT', 
           schema: 'public', 
@@ -530,4 +540,4 @@ export default function MessagesTab() {
       )}
     </div>
   );
-};
+}
