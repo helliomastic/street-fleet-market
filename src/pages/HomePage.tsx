@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
@@ -111,32 +110,16 @@ const HomePage = () => {
           channelRef.current = null;
         }
         
-        // Create a new channel with a specific channel name
+        // Create a new channel
         const channel = supabase
-          .channel('cars-channel')
+          .channel('public:cars')
           .on('postgres_changes', { 
-            event: 'INSERT',  
+            event: '*',  // Listen to all events (INSERT, UPDATE, DELETE)
             schema: 'public', 
             table: 'cars' 
           }, (payload) => {
-            console.log('New car added:', payload);
-            // Immediately fetch new listings when a car is added
-            fetchListings();
-          })
-          .on('postgres_changes', { 
-            event: 'UPDATE',  
-            schema: 'public', 
-            table: 'cars' 
-          }, (payload) => {
-            console.log('Car updated:', payload);
-            fetchListings();
-          })
-          .on('postgres_changes', { 
-            event: 'DELETE',  
-            schema: 'public', 
-            table: 'cars' 
-          }, (payload) => {
-            console.log('Car deleted:', payload);
+            console.log('Car listing change detected:', payload);
+            // Immediately fetch updated listings
             fetchListings();
           })
           .subscribe((status) => {
