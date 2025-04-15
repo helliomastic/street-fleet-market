@@ -100,9 +100,15 @@ const HomePage = () => {
   useEffect(() => {
     console.log("Setting up realtime subscription for cars table");
     
-    // Create a new channel
+    // Clean up any existing subscription
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+    
+    // Create a new channel with a specific channel name
     const channel = supabase
-      .channel('cars-channel')
+      .channel('cars-realtime-updates')
       .on('postgres_changes', { 
         event: '*',  // Listen for all events (INSERT, UPDATE, DELETE)
         schema: 'public', 
@@ -116,7 +122,7 @@ const HomePage = () => {
         console.log('Subscription status:', status);
       });
     
-    // Store channel reference
+    // Store channel reference for cleanup
     channelRef.current = channel;
     
     // Initial fetch of listings

@@ -156,7 +156,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("Error signing out:", error);
+        throw error;
+      }
+      // The auth state change listener will handle state updates
+    } catch (error) {
+      console.error("Error during sign out:", error);
+      throw error;
+    }
   };
 
   return (
