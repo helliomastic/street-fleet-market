@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
@@ -100,35 +101,36 @@ const HomePage = () => {
   useEffect(() => {
     console.log("Setting up realtime subscription for cars table");
     
-    // Clean up any existing subscription
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
-    }
-    
     // First get existing listings
     fetchListings().then(() => {
       console.log("Initial listings fetch complete");
+      
+      // Only set up the subscription after the initial data is loaded
+      // Clean up any existing subscription
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+      
+      // Create a new channel with a specific channel name
+      const channel = supabase
+        .channel('cars-realtime-changes')
+        .on('postgres_changes', { 
+          event: '*',  // Listen for all events (INSERT, UPDATE, DELETE)
+          schema: 'public', 
+          table: 'cars' 
+        }, (payload) => {
+          console.log('Real-time update received:', payload);
+          // Immediately refetch all listings when any change occurs
+          fetchListings();
+        })
+        .subscribe((status) => {
+          console.log('Subscription status:', status);
+        });
+      
+      // Store channel reference for cleanup
+      channelRef.current = channel;
     });
-    
-    // Create a new channel with a specific channel name
-    const channel = supabase
-      .channel('cars-realtime-changes')
-      .on('postgres_changes', { 
-        event: '*',  // Listen for all events (INSERT, UPDATE, DELETE)
-        schema: 'public', 
-        table: 'cars' 
-      }, (payload) => {
-        console.log('Real-time update received:', payload);
-        // Immediately refetch all listings when any change occurs
-        fetchListings();
-      })
-      .subscribe((status) => {
-        console.log('Subscription status:', status);
-      });
-    
-    // Store channel reference for cleanup
-    channelRef.current = channel;
     
     // Cleanup function
     return () => {
