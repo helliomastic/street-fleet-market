@@ -101,36 +101,42 @@ const HomePage = () => {
   useEffect(() => {
     console.log("Setting up realtime subscription for cars table");
     
-    // First get existing listings
-    fetchListings().then(() => {
-      console.log("Initial listings fetch complete");
-      
-      // Only set up the subscription after the initial data is loaded
-      // Clean up any existing subscription
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
+    const setupRealtimeSubscription = async () => {
+      try {
+        // First get existing listings
+        await fetchListings();
+        console.log("Initial listings fetch complete");
+        
+        // Clean up any existing subscription
+        if (channelRef.current) {
+          supabase.removeChannel(channelRef.current);
+          channelRef.current = null;
+        }
+        
+        // Create a new channel with a specific channel name
+        const channel = supabase
+          .channel('cars-realtime-changes')
+          .on('postgres_changes', { 
+            event: '*',  // Listen for all events (INSERT, UPDATE, DELETE)
+            schema: 'public', 
+            table: 'cars' 
+          }, (payload) => {
+            console.log('Real-time update received:', payload);
+            // Immediately refetch all listings when any change occurs
+            fetchListings();
+          })
+          .subscribe((status) => {
+            console.log('Subscription status:', status);
+          });
+        
+        // Store channel reference for cleanup
+        channelRef.current = channel;
+      } catch (error) {
+        console.error("Error setting up realtime subscription:", error);
       }
-      
-      // Create a new channel with a specific channel name
-      const channel = supabase
-        .channel('cars-realtime-changes')
-        .on('postgres_changes', { 
-          event: '*',  // Listen for all events (INSERT, UPDATE, DELETE)
-          schema: 'public', 
-          table: 'cars' 
-        }, (payload) => {
-          console.log('Real-time update received:', payload);
-          // Immediately refetch all listings when any change occurs
-          fetchListings();
-        })
-        .subscribe((status) => {
-          console.log('Subscription status:', status);
-        });
-      
-      // Store channel reference for cleanup
-      channelRef.current = channel;
-    });
+    };
+    
+    setupRealtimeSubscription();
     
     // Cleanup function
     return () => {
@@ -142,7 +148,7 @@ const HomePage = () => {
     };
   }, [fetchListings]);
 
-  // Log the current realtime configuration (without using RPC)
+  // Log the current realtime configuration
   useEffect(() => {
     const logRealtimeStatus = () => {
       try {
