@@ -248,7 +248,6 @@ const PostCarPage = () => {
       }
       
       // Prepare car data - ensure condition value matches database constraints
-      // The condition is already in lowercase from the Select component
       const carData = {
         title: values.title,
         make: values.make,
@@ -256,12 +255,12 @@ const PostCarPage = () => {
         year: parseInt(values.year),
         price: parseInt(values.price),
         description: values.description,
-        condition: values.condition, // Already in the correct format
+        condition: values.condition,
         user_id: user.id,
         image_url: imageUrl,
       };
       
-      console.log("Submitting car data:", carData); // Debugging log
+      console.log("Submitting car data:", carData);
       
       let result;
       
@@ -291,8 +290,12 @@ const PostCarPage = () => {
           : "Your car has been successfully posted for sale.",
       });
       
-      // Redirect to dashboard
-      navigate("/dashboard");
+      // Wait a moment to ensure the data has been fully processed
+      setTimeout(() => {
+        // Redirect to homepage to see the new listing
+        navigate("/");
+      }, 500);
+      
     } catch (error: any) {
       console.error("Error creating/updating listing:", error);
       toast({

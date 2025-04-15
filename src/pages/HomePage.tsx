@@ -99,8 +99,6 @@ const HomePage = () => {
 
   // Setup real-time subscription
   useEffect(() => {
-    console.log("Setting up realtime subscription for cars table");
-    
     const setupRealtimeSubscription = async () => {
       try {
         // First get existing listings
@@ -115,24 +113,43 @@ const HomePage = () => {
         
         // Create a new channel with a specific channel name
         const channel = supabase
-          .channel('cars-realtime-changes')
+          .channel('cars-channel')
           .on('postgres_changes', { 
-            event: '*',  // Listen for all events (INSERT, UPDATE, DELETE)
+            event: 'INSERT',  
             schema: 'public', 
             table: 'cars' 
           }, (payload) => {
-            console.log('Real-time update received:', payload);
-            // Immediately refetch all listings when any change occurs
+            console.log('New car added:', payload);
+            fetchListings();
+          })
+          .on('postgres_changes', { 
+            event: 'UPDATE',  
+            schema: 'public', 
+            table: 'cars' 
+          }, (payload) => {
+            console.log('Car updated:', payload);
+            fetchListings();
+          })
+          .on('postgres_changes', { 
+            event: 'DELETE',  
+            schema: 'public', 
+            table: 'cars' 
+          }, (payload) => {
+            console.log('Car deleted:', payload);
             fetchListings();
           })
           .subscribe((status) => {
-            console.log('Subscription status:', status);
+            console.log('Realtime subscription status:', status);
           });
         
         // Store channel reference for cleanup
         channelRef.current = channel;
       } catch (error) {
         console.error("Error setting up realtime subscription:", error);
+        // Try again after a delay if there's an error
+        setTimeout(() => {
+          setupRealtimeSubscription();
+        }, 3000);
       }
     };
     
@@ -147,20 +164,6 @@ const HomePage = () => {
       }
     };
   }, [fetchListings]);
-
-  // Log the current realtime configuration
-  useEffect(() => {
-    const logRealtimeStatus = () => {
-      try {
-        console.log("Realtime is enabled for public.cars in config.toml");
-        console.log("Subscription should be active for cars table");
-      } catch (error) {
-        console.error("Error:", error);
-      }
-    };
-    
-    logRealtimeStatus();
-  }, []);
 
   const handleFilterChange = (filters: any) => {
     const { searchTerm, make, minYear, maxYear, priceRange } = filters;
