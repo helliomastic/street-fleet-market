@@ -96,14 +96,12 @@ export const CarListingComponent = ({ cars, loadingCars, fetchCars }: CarListing
       setCreating(true);
       setCreateError(null);
       
-      // Get user data
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) {
         setCreateError("User not authenticated");
         return;
       }
       
-      // Insert the new car
       const { error } = await supabase
         .from('cars')
         .insert({
@@ -139,33 +137,26 @@ export const CarListingComponent = ({ cars, loadingCars, fetchCars }: CarListing
     try {
       setDeletingAll(true);
       
-      // First, delete ALL messages in the messages table
       console.log("Deleting all messages first");
-      const { error: allMessagesError } = await supabase
-        .from('messages')
-        .delete()
-        .gte('car_id', ''); // This condition will match all messages
-        
-      if (allMessagesError) {
-        console.error("Error deleting all messages:", allMessagesError);
+      const { error: messagesError } = await supabase.rpc('delete_all_messages');
+      
+      if (messagesError) {
+        console.error("Error deleting all messages:", messagesError);
         toast({
           title: "Error",
-          description: "Failed to delete all messages: " + allMessagesError.message,
+          description: "Failed to delete all messages: " + messagesError.message,
           variant: "destructive",
         });
+        setDeletingAll(false);
         return;
       }
       
       console.log("Successfully deleted all messages");
       
-      // Add a small delay to ensure database consistency
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Now that all messages are deleted, delete all cars
       const { error } = await supabase
         .from('cars')
         .delete()
-        .neq('id', 'dummy_value'); // This will match all car ids
+        .neq('id', 'dummy_value');
         
       if (error) {
         console.error("Error deleting all cars:", error);
@@ -174,10 +165,10 @@ export const CarListingComponent = ({ cars, loadingCars, fetchCars }: CarListing
           description: error.message,
           variant: "destructive",
         });
+        setDeletingAll(false);
         return;
       }
       
-      // Refresh the car list
       fetchCars();
       
       toast({

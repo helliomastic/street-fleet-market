@@ -89,11 +89,8 @@ const DashboardPage = () => {
       
       console.log("Deleting car with ID:", carId);
       
-      const { error: messagesError } = await supabase
-        .from('messages')
-        .delete()
-        .eq('car_id', carId);
-        
+      const { error: messagesError } = await supabase.rpc('delete_car_messages', { car_id_param: carId });
+      
       if (messagesError) {
         console.error("Error deleting related messages:", messagesError);
         toast({
@@ -106,8 +103,6 @@ const DashboardPage = () => {
       }
       
       console.log("Successfully deleted messages for car:", carId);
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
       const { error } = await supabase
         .from('cars')

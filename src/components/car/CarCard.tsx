@@ -79,12 +79,9 @@ const CarCard = ({ car }: CarCardProps) => {
       
       console.log("Deleting car with ID:", car.id);
       
-      // First delete all messages related to this car
-      const { error: messagesError } = await supabase
-        .from('messages')
-        .delete()
-        .eq('car_id', car.id);
-        
+      // Use the RPC function to safely delete all messages first
+      const { error: messagesError } = await supabase.rpc('delete_car_messages', { car_id_param: car.id });
+      
       if (messagesError) {
         console.error("Error deleting related messages:", messagesError);
         toast({
@@ -97,9 +94,6 @@ const CarCard = ({ car }: CarCardProps) => {
       }
       
       console.log("Successfully deleted messages for car:", car.id);
-      
-      // Add a small delay to ensure database consistency
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Now delete the car listing
       const { error } = await supabase

@@ -28,13 +28,10 @@ export const CarListItem = ({ car, onEdit, fetchCars }: CarListItemProps) => {
     try {
       setUpdating(true);
       
-      // First delete all messages related to this car
+      // Step 1: Delete all messages for this car with a wildcard query
       console.log("Deleting messages for car:", id);
-      const { error: messagesError } = await supabase
-        .from('messages')
-        .delete()
-        .eq('car_id', id);
-        
+      const { error: messagesError } = await supabase.rpc('delete_car_messages', { car_id_param: id });
+      
       if (messagesError) {
         console.error("Error deleting related messages:", messagesError);
         toast({
@@ -47,10 +44,7 @@ export const CarListItem = ({ car, onEdit, fetchCars }: CarListItemProps) => {
       
       console.log("Successfully deleted messages for car:", id);
       
-      // Add a small delay to ensure database consistency
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Now that messages are deleted, delete the car
+      // Step 2: Now it's safe to delete the car
       const { error } = await supabase
         .from('cars')
         .delete()
