@@ -4,12 +4,13 @@ import { useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
-import { Car, Users, MessageSquare } from "lucide-react";
+import { Car, Users, MessageSquare, Mail } from "lucide-react";
 
 // Import refactored components
 import { CarListingComponent } from "@/components/admin/CarListing";
 import { UserManagement } from "@/components/admin/UserManagement";
 import { MessagesTab } from "@/components/admin/MessagesTab";
+import { ContactSubmissions } from "@/components/admin/components/ContactSubmissions";
 import { useAdminData } from "@/hooks/useAdminData";
 
 const AdminPage = () => {
@@ -67,7 +68,7 @@ const AdminPage = () => {
             onValueChange={setActiveTab}
             className="space-y-4"
           >
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="listings" className="flex items-center justify-center">
                 <Car className="h-4 w-4 mr-2" /> Car Listings
               </TabsTrigger>
@@ -76,6 +77,9 @@ const AdminPage = () => {
               </TabsTrigger>
               <TabsTrigger value="messages" className="flex items-center justify-center">
                 <MessageSquare className="h-4 w-4 mr-2" /> Messages
+              </TabsTrigger>
+              <TabsTrigger value="contact" className="flex items-center justify-center">
+                <Mail className="h-4 w-4 mr-2" /> Contact Form
               </TabsTrigger>
             </TabsList>
 
@@ -96,6 +100,10 @@ const AdminPage = () => {
 
             <TabsContent value="messages">
               <MessagesTab />
+            </TabsContent>
+            
+            <TabsContent value="contact">
+              <ContactSubmissions />
             </TabsContent>
           </Tabs>
         </div>
