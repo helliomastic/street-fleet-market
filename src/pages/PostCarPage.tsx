@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -26,13 +25,10 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, CarCondition, isValidCarCondition } from "@/integrations/supabase/client";
 import { ImageIcon } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { Skeleton } from "@/components/ui/skeleton";
-
-// Define the condition type to match the expected enum values
-type CarCondition = "new" | "like_new" | "excellent" | "good" | "fair" | "poor";
 
 const conditionOptions = [
   { value: "new", label: "New" },
@@ -113,8 +109,13 @@ const PostCarPage = () => {
         setExistingCar(data);
         setImageUrl(data.image_url || null);
         
-        // Ensure the condition value is one of the allowed enum values
-        const carCondition = data.condition as CarCondition;
+        let carCondition: CarCondition = "new"; // Default fallback
+        
+        if (isValidCarCondition(data.condition)) {
+          carCondition = data.condition;
+        } else {
+          console.warn(`Invalid condition value received from database: ${data.condition}. Using default "new" instead.`);
+        }
         
         form.setValue("title", data.title);
         form.setValue("make", data.make);
@@ -172,7 +173,6 @@ const PostCarPage = () => {
         if (!imageFile) {
           console.warn("No image file selected.");
         } else {
-          // Validate image type
           const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif'];
           if (!allowedImageTypes.includes(imageFile.type)) {
             toast({
@@ -184,7 +184,6 @@ const PostCarPage = () => {
             return;
           }
 
-          // Validate image size (max 5MB)
           if (imageFile.size > 5 * 1024 * 1024) {
             toast({
               variant: "destructive",
@@ -222,10 +221,14 @@ const PostCarPage = () => {
         }
       }
       
-      // Ensure the condition value is properly typed as CarCondition
-      const condition = values.condition as CarCondition;
+      let condition: CarCondition = "new"; // Default fallback
       
-      // Prepare car data with proper types
+      if (isValidCarCondition(values.condition)) {
+        condition = values.condition;
+      } else {
+        console.warn(`Invalid condition value: ${values.condition}. Using default "new" instead.`);
+      }
+      
       const carData = {
         title: values.title,
         make: values.make,
@@ -243,14 +246,12 @@ const PostCarPage = () => {
       let result;
       
       if (isEditing && carId) {
-        // Update existing car
         result = await supabase
           .from('cars')
           .update(carData)
           .eq('id', carId)
           .eq('user_id', user.id);
       } else {
-        // Insert new car
         result = await supabase
           .from('cars')
           .insert(carData);
@@ -270,9 +271,7 @@ const PostCarPage = () => {
           : "Your car has been successfully posted for sale.",
       });
       
-      // Wait a moment to ensure the data has been fully processed
       setTimeout(() => {
-        // Redirect to homepage to see the new listing
         navigate("/");
       }, 500);
       

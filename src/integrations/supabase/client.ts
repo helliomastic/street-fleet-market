@@ -6,6 +6,12 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://pcyuwktvexjrzuiusilt.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBjeXV3a3R2ZXhqcnp1aXVzaWx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ1NTY0NDUsImV4cCI6MjA2MDEzMjQ0NX0.TkVSSobi3394fSwH0P3Jb33o-DbKzXD81Z_cDetNeeA";
 
+// Define valid car conditions to ensure type safety throughout the application
+export type CarCondition = "new" | "like_new" | "excellent" | "good" | "fair" | "poor";
+export const isValidCarCondition = (condition: string): condition is CarCondition => {
+  return ["new", "like_new", "excellent", "good", "fair", "poor"].includes(condition);
+};
+
 // Create the Supabase client with options for real-time
 export const supabase = createClient<Database>(
   SUPABASE_URL, 
