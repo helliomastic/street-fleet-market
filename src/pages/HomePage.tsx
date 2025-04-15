@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
@@ -98,18 +97,17 @@ const HomePage = () => {
   }, []);
 
   // Setup real-time subscription
-  const setupRealtimeSubscription = useCallback(() => {
+  useEffect(() => {
+    console.log("Setting up realtime subscription for cars table");
+    
     // Remove existing channel if it exists
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
     }
-    
-    console.log("Setting up realtime subscription for cars table");
     
     // Create a new channel
     const channel = supabase
-      .channel('cars-changes-' + Date.now()) // Use unique channel name
+      .channel('public:cars:changes')
       .on('postgres_changes', { 
         event: '*',  // Listen for all events (INSERT, UPDATE, DELETE)
         schema: 'public', 
@@ -121,35 +119,23 @@ const HomePage = () => {
       })
       .subscribe((status) => {
         console.log('Subscription status:', status);
-        if (status !== 'SUBSCRIBED') {
-          console.error('Failed to subscribe to car listings changes');
-        } else {
-          console.log('Successfully subscribed to car listings changes');
-        }
       });
     
     // Store channel reference
     channelRef.current = channel;
     
+    // Initial fetch of listings
+    fetchListings();
+    
+    // Cleanup function
     return () => {
+      console.log('Cleaning up subscription');
       if (channelRef.current) {
-        console.log('Removing channel subscription');
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
     };
   }, [fetchListings]);
-
-  useEffect(() => {
-    // Initial fetch
-    fetchListings();
-    
-    // Setup real-time subscription
-    const cleanup = setupRealtimeSubscription();
-    
-    // Clean up subscription on unmount
-    return cleanup;
-  }, [fetchListings, setupRealtimeSubscription]);
 
   const handleFilterChange = (filters: any) => {
     const { searchTerm, make, minYear, maxYear, priceRange } = filters;
