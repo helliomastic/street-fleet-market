@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
@@ -89,7 +90,8 @@ const DashboardPage = () => {
       
       console.log("Deleting car with ID:", carId);
       
-      const { error: messagesError } = await supabase.rpc('delete_car_messages', { car_id_param: carId });
+      const { error: messagesError } = await supabase
+        .rpc('delete_car_messages', { car_id_param: carId });
       
       if (messagesError) {
         console.error("Error deleting related messages:", messagesError);

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Edit, Trash2 } from "lucide-react";
 import { 
@@ -28,9 +29,10 @@ export const CarListItem = ({ car, onEdit, fetchCars }: CarListItemProps) => {
     try {
       setUpdating(true);
       
-      // Step 1: Delete all messages for this car with a wildcard query
+      // Step 1: Delete all messages for this car using the RPC function
       console.log("Deleting messages for car:", id);
-      const { error: messagesError } = await supabase.rpc('delete_car_messages', { car_id_param: id });
+      const { error: messagesError } = await supabase
+        .rpc('delete_car_messages', { car_id_param: id });
       
       if (messagesError) {
         console.error("Error deleting related messages:", messagesError);

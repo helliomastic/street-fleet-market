@@ -124,6 +124,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_all_messages: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      delete_car_messages: {
+        Args: { car_id_param: string }
+        Returns: undefined
+      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean

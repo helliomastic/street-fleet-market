@@ -1,3 +1,4 @@
+
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
@@ -80,7 +81,8 @@ const CarCard = ({ car }: CarCardProps) => {
       console.log("Deleting car with ID:", car.id);
       
       // Use the RPC function to safely delete all messages first
-      const { error: messagesError } = await supabase.rpc('delete_car_messages', { car_id_param: car.id });
+      const { error: messagesError } = await supabase
+        .rpc('delete_car_messages', { car_id_param: car.id });
       
       if (messagesError) {
         console.error("Error deleting related messages:", messagesError);

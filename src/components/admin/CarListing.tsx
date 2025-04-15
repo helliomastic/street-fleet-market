@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -138,7 +139,8 @@ export const CarListingComponent = ({ cars, loadingCars, fetchCars }: CarListing
       setDeletingAll(true);
       
       console.log("Deleting all messages first");
-      const { error: messagesError } = await supabase.rpc('delete_all_messages');
+      const { error: messagesError } = await supabase
+        .rpc('delete_all_messages');
       
       if (messagesError) {
         console.error("Error deleting all messages:", messagesError);
