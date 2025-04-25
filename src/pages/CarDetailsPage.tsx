@@ -38,6 +38,14 @@ const CarDetailsPage = () => {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(price);
+  };
+
   useEffect(() => {
     const fetchCarDetails = async () => {
       try {
@@ -45,7 +53,6 @@ const CarDetailsPage = () => {
         
         if (!id) return;
         
-        // Fetch car from Supabase
         const { data: carData, error: carError } = await supabase
           .from('cars')
           .select('*')
@@ -61,7 +68,6 @@ const CarDetailsPage = () => {
           return;
         }
         
-        // Convert to CarListing format
         const formattedCar: CarListing = {
           id: carData.id,
           title: carData.title,
@@ -71,17 +77,16 @@ const CarDetailsPage = () => {
           price: carData.price,
           description: carData.description,
           image: carData.image_url,
-          location: "United States", // Default location
+          location: "United States",
           postedDate: new Date(carData.created_at || new Date()),
           userId: carData.user_id,
           condition: carData.condition,
-          sellerName: 'Anonymous', // Default seller name
+          sellerName: 'Anonymous',
           createdAt: new Date(carData.created_at || new Date()),
         };
         
         setCar(formattedCar);
         
-        // Fetch seller profile
         if (carData.user_id) {
           const { data: profileData } = await supabase
             .from('profiles')
@@ -93,12 +98,11 @@ const CarDetailsPage = () => {
             setSeller({
               id: profileData.id,
               name: profileData.full_name || 'Anonymous',
-              email: 'contact@example.com', // For privacy, we don't show actual email
+              email: 'contact@example.com',
             });
           }
         }
         
-        // Fetch similar cars (same make)
         const { data: similarCarsData } = await supabase
           .from('cars')
           .select('*')
@@ -172,7 +176,6 @@ const CarDetailsPage = () => {
     setSendingMessage(true);
     
     try {
-      // Insert message into database with all required fields
       const { error } = await supabase
         .from('messages')
         .insert({
@@ -262,7 +265,6 @@ const CarDetailsPage = () => {
     <Layout>
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-5xl mx-auto">
-          {/* Breadcrumbs */}
           <Breadcrumb className="mb-6">
             <BreadcrumbList>
               <BreadcrumbItem>
@@ -283,7 +285,6 @@ const CarDetailsPage = () => {
             </BreadcrumbList>
           </Breadcrumb>
 
-          {/* Car Image */}
           <div className="mb-8 rounded-lg overflow-hidden h-96 bg-gray-100 flex items-center justify-center">
             {car.image ? (
               <img 
@@ -296,7 +297,6 @@ const CarDetailsPage = () => {
             )}
           </div>
 
-          {/* Car Info Header */}
           <div className="flex flex-col md:flex-row justify-between mb-8">
             <div>
               <h1 className="text-3xl font-bold mb-2">{car.title}</h1>
@@ -317,14 +317,12 @@ const CarDetailsPage = () => {
             </div>
             <div className="mt-4 md:mt-0">
               <div className="text-3xl font-bold text-brand-blue flex items-center">
-                <DollarSign className="h-6 w-6" />
-                {car.price.toLocaleString()}
+                {formatPrice(car.price)}
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Car Details */}
             <div className="col-span-2">
               <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
                 <h2 className="text-xl font-semibold mb-4">Car Details</h2>
@@ -372,7 +370,6 @@ const CarDetailsPage = () => {
               </div>
             </div>
 
-            {/* Seller Info */}
             <div className="col-span-1">
               <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
                 <h2 className="text-xl font-semibold mb-4">Seller Information</h2>
@@ -454,7 +451,6 @@ const CarDetailsPage = () => {
             </div>
           </div>
 
-          {/* Similar Listings */}
           <div className="mt-8">
             <h2 className="text-2xl font-bold mb-6">Similar Vehicles</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -476,7 +472,7 @@ const CarDetailsPage = () => {
                       <h3 className="font-bold text-lg mb-1 truncate">{similarCar.title}</h3>
                       <div className="flex justify-between items-center mt-4">
                         <div className="text-xl font-bold text-brand-blue">
-                          ${similarCar.price.toLocaleString()}
+                          {formatPrice(similarCar.price)}
                         </div>
                         <Link
                           to={`/car/${similarCar.id}`}

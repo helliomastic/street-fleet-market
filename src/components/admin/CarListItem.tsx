@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Edit, Trash2 } from "lucide-react";
 import { 
@@ -80,6 +79,13 @@ export const CarListItem = ({ car, onEdit, fetchCars }: CarListItemProps) => {
     }
   };
 
+  // Format price to Indian Rupees
+  const formattedPrice = new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(car.price);
+
   return (
     <div className="border rounded-lg p-4 flex flex-col md:flex-row items-center md:items-start gap-4">
       <div className="w-full md:w-40 h-32 bg-gray-200 rounded-lg overflow-hidden">
@@ -101,7 +107,7 @@ export const CarListItem = ({ car, onEdit, fetchCars }: CarListItemProps) => {
           {car.make} {car.model} {car.year}
         </p>
         <p className="font-bold text-brand-blue mt-2">
-          ${car.price.toLocaleString()}
+          {formattedPrice}
         </p>
         <div className="mt-4 flex gap-2">
           <button

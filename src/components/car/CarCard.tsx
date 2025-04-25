@@ -1,4 +1,3 @@
-
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
@@ -52,10 +51,10 @@ const CarCard = ({ car }: CarCardProps) => {
   // Format the time since posting
   const timeAgo = formatDistanceToNow(car.postedDate, { addSuffix: true });
   
-  // Format price with commas
-  const formattedPrice = new Intl.NumberFormat('en-US', {
+  // Format price with commas in Indian Rupees
+  const formattedPrice = new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'INR',
     maximumFractionDigits: 0,
   }).format(car.price);
 
