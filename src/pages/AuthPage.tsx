@@ -19,7 +19,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { User } from '@supabase/supabase-js';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
@@ -67,16 +66,39 @@ const AuthPage = () => {
     },
   });
 
+  const retryOperation = async (operation: () => Promise<any>, maxRetries = 3) => {
+    let lastError;
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        return await operation();
+      } catch (error: any) {
+        lastError = error;
+        console.log(`Attempt ${i + 1} failed:`, error);
+        
+        // If it's a network error, wait before retrying
+        if (error.message?.includes('NetworkError') || error.message?.includes('fetch')) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Exponential backoff
+        } else {
+          throw error; // Don't retry non-network errors
+        }
+      }
+    }
+    throw lastError;
+  };
+
   const handleLogin = async (data: z.infer<typeof loginSchema>) => {
     try {
       setIsLoading(true);
-      const { error } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
+      
+      const result = await retryOperation(async () => {
+        return await supabase.auth.signInWithPassword({
+          email: data.email,
+          password: data.password,
+        });
       });
 
-      if (error) {
-        throw error;
+      if (result.error) {
+        throw result.error;
       }
 
       toast({
@@ -86,10 +108,22 @@ const AuthPage = () => {
       
       navigate("/dashboard");
     } catch (error: any) {
+      console.error("Login error:", error);
+      
+      let errorMessage = "Failed to login. Please try again.";
+      
+      if (error.message?.includes('NetworkError') || error.message?.includes('fetch')) {
+        errorMessage = "Network connection issue. Please check your internet connection and try again.";
+      } else if (error.message?.includes('Invalid login credentials')) {
+        errorMessage = "Invalid email or password. Please check your credentials.";
+      } else if (error.message?.includes('Email not confirmed')) {
+        errorMessage = "Please check your email and click the confirmation link before logging in.";
+      }
+
       toast({
         variant: "destructive",
         title: "Login failed",
-        description: error.message || "Failed to login. Please try again.",
+        description: errorMessage,
       });
     } finally {
       setIsLoading(false);
@@ -100,21 +134,20 @@ const AuthPage = () => {
     try {
       setIsLoading(true);
       
-      // Changed to use signUp with autoConfirm false to prevent automatic login
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          data: {
-            full_name: data.fullName,
-          },
-          // Disable auto-login after signup
-          emailRedirectTo: `${window.location.origin}/auth?tab=login`,
-        }
+      const result = await retryOperation(async () => {
+        return await supabase.auth.signUp({
+          email: data.email,
+          password: data.password,
+          options: {
+            data: {
+              full_name: data.fullName,
+            },
+          }
+        });
       });
 
-      if (signUpError) {
-        throw signUpError;
+      if (result.error) {
+        throw result.error;
       }
       
       toast({
@@ -131,10 +164,22 @@ const AuthPage = () => {
       navigate("/auth?tab=login");
       
     } catch (error: any) {
+      console.error("Signup error:", error);
+      
+      let errorMessage = "Failed to create account. Please try again.";
+      
+      if (error.message?.includes('NetworkError') || error.message?.includes('fetch')) {
+        errorMessage = "Network connection issue. Please check your internet connection and try again.";
+      } else if (error.message?.includes('User already registered')) {
+        errorMessage = "An account with this email already exists. Please try logging in instead.";
+      } else if (error.message?.includes('Password should be at least')) {
+        errorMessage = "Password is too weak. Please choose a stronger password.";
+      }
+
       toast({
         variant: "destructive",
         title: "Signup failed",
-        description: error.message || "Failed to create account. Please try again.",
+        description: errorMessage,
       });
     } finally {
       setIsLoading(false);
@@ -146,6 +191,14 @@ const AuthPage = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-md mx-auto">
           <h1 className="text-3xl font-bold text-center mb-8">Welcome to Street Fleet</h1>
+          
+          {signupSuccess && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-md">
+              <p className="text-green-800 text-sm">
+                Account created successfully! Please log in with your credentials.
+              </p>
+            </div>
+          )}
           
           <Tabs defaultValue={defaultTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6">

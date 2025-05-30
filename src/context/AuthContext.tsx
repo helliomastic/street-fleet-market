@@ -26,18 +26,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let messageChannel: any = null;
 
     const setupAuthListener = async () => {
-      // Check for existing session first
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      
-      if (currentSession?.user) {
-        await ensureUserProfileExists(currentSession.user);
-        checkIsAdmin(currentSession.user.id);
-        setupMessageSubscription(currentSession.user.id);
+      try {
+        // Check for existing session first
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        
+        if (currentSession?.user) {
+          await ensureUserProfileExists(currentSession.user);
+          checkIsAdmin(currentSession.user.id);
+          setupMessageSubscription(currentSession.user.id);
+        }
+      } catch (error) {
+        console.error('Error getting session:', error);
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
       
       // Set up auth state change listener
       authListener = supabase.auth.onAuthStateChange(async (event, newSession) => {
@@ -164,11 +168,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error("Error signing out:", error);
-        throw error;
+        
+        // Show user-friendly error message
+        if (error.message?.includes('NetworkError') || error.message?.includes('fetch')) {
+          toast({
+            variant: "destructive",
+            title: "Network Error",
+            description: "Unable to sign out due to network issues. You may already be signed out.",
+          });
+        } else {
+          throw error;
+        }
+      } else {
+        console.log("Sign out successful");
       }
-      console.log("Sign out successful");
+      
+      // Clear local state regardless of API call success
       setUser(null);
       setSession(null);
+      setIsAdmin(false);
     } catch (error) {
       console.error("Error during sign out:", error);
       throw error;
