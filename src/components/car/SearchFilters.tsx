@@ -1,4 +1,3 @@
-
 import { useState, useRef, useImperativeHandle, forwardRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -83,13 +82,13 @@ const SearchFilters = forwardRef<any, SearchFiltersProps>(({ onFilterChange }, r
     applyFilters({ priceRange: value });
   };
 
-  // Format price in Indian Rupees
+  // Format price in Nepali Rupees
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-IN', {
+    return new Intl.NumberFormat('en-NP', {
       style: 'currency',
-      currency: 'INR',
+      currency: 'NPR',
       maximumFractionDigits: 0,
-    }).format(price);
+    }).format(price).replace('NPR', 'Rs');
   };
 
   const carMakes = [

@@ -51,13 +51,13 @@ const CarCard = ({ car }: CarCardProps) => {
   // Format the time since posting
   const timeAgo = formatDistanceToNow(car.postedDate, { addSuffix: true });
   
-  // Format price with commas in Indian Rupees
-  const formattedPrice = new Intl.NumberFormat('en-IN', {
+  // Format price with commas in Nepali Rupees
+  const formattedPrice = new Intl.NumberFormat('en-NP', {
     style: 'currency',
-    currency: 'INR',
+    currency: 'NPR',
     maximumFractionDigits: 0,
-  }).format(car.price);
-
+  }).format(car.price).replace('NPR', 'Rs');
+  
   // Get condition display text
   const getConditionDisplay = (condition: string) => {
     const conditionMap: Record<string, string> = {

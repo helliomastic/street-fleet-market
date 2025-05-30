@@ -39,11 +39,11 @@ const CarDetailsPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-IN', {
+    return new Intl.NumberFormat('en-NP', {
       style: 'currency',
-      currency: 'INR',
+      currency: 'NPR',
       maximumFractionDigits: 0,
-    }).format(price);
+    }).format(price).replace('NPR', 'Rs');
   };
 
   useEffect(() => {
