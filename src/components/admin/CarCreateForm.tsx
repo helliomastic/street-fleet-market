@@ -40,7 +40,7 @@ export const CarCreateForm = ({
     year: new Date().getFullYear(),
     price: 0,
     condition: 'good',
-    fuel_type: 'petrol',
+    fuelType: 'petrol',
     description: ''
   });
 
@@ -52,7 +52,7 @@ export const CarCreateForm = ({
       year: new Date().getFullYear(),
       price: 0,
       condition: 'good',
-      fuel_type: 'petrol',
+      fuelType: 'petrol',
       description: ''
     });
   };
@@ -189,9 +189,9 @@ export const CarCreateForm = ({
               Fuel Type
             </label>
             <Select
-              value={newCar.fuel_type}
+              value={newCar.fuelType}
               onValueChange={(value) =>
-                setNewCar({ ...newCar, fuel_type: value })
+                setNewCar({ ...newCar, fuelType: value })
               }
             >
               <SelectTrigger>

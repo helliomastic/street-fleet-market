@@ -79,6 +79,7 @@ const HomePage = () => {
           postedDate: new Date(car.created_at || new Date()),
           userId: car.user_id,
           condition: car.condition,
+          fuelType: car.fuel_type || 'petrol',
           sellerName: profile.full_name || profile.username || 'Anonymous',
           createdAt: new Date(car.created_at || new Date()),
         };

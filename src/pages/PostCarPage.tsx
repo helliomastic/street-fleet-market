@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -46,6 +47,8 @@ const fuelTypeOptions = [
   { value: "diesel", label: "Diesel" },
   { value: "electric", label: "Electric" },
 ] as const;
+
+type FuelType = "petrol" | "diesel" | "electric";
 
 const formSchema = z.object({
   title: z.string().min(2, {
@@ -128,6 +131,11 @@ const PostCarPage = () => {
         } else {
           console.warn(`Invalid condition value received from database: ${data.condition}. Using default "new" instead.`);
         }
+
+        let fuelType: FuelType = "petrol"; // Default fallback
+        if (data.fuel_type && ["petrol", "diesel", "electric"].includes(data.fuel_type)) {
+          fuelType = data.fuel_type as FuelType;
+        }
         
         form.setValue("title", data.title);
         form.setValue("make", data.make);
@@ -136,7 +144,7 @@ const PostCarPage = () => {
         form.setValue("price", data.price.toString());
         form.setValue("description", data.description);
         form.setValue("condition", carCondition);
-        form.setValue("fuelType", data.fuel_type || "petrol");
+        form.setValue("fuelType", fuelType);
       }
     } catch (error: any) {
       console.error("Error fetching car details:", error);
@@ -160,7 +168,7 @@ const PostCarPage = () => {
       price: "",
       description: "",
       condition: "new" as CarCondition,
-      fuelType: "petrol",
+      fuelType: "petrol" as FuelType,
     },
     mode: "onChange",
   });

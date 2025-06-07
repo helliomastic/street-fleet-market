@@ -161,9 +161,9 @@ export const CarEditForm = ({
               Fuel Type
             </label>
             <Select
-              value={editingCar.fuel_type}
+              value={editingCar.fuelType}
               onValueChange={(value) =>
-                setEditingCar({ ...editingCar, fuel_type: value })
+                setEditingCar({ ...editingCar, fuelType: value })
               }
             >
               <SelectTrigger>
