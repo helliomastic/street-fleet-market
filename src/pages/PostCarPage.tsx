@@ -41,6 +41,12 @@ const conditionOptions = [
   { value: "poor", label: "Poor" },
 ] as const;
 
+const fuelTypeOptions = [
+  { value: "petrol", label: "Petrol" },
+  { value: "diesel", label: "Diesel" },
+  { value: "electric", label: "Electric" },
+] as const;
+
 const formSchema = z.object({
   title: z.string().min(2, {
     message: "Title must be at least 2 characters.",
@@ -67,6 +73,7 @@ const formSchema = z.object({
     message: "Description must be at least 10 characters.",
   }),
   condition: z.enum(["new", "like_new", "excellent", "good", "fair", "poor"]),
+  fuelType: z.enum(["petrol", "diesel", "electric"]),
   image: z.any().optional(),
 });
 
@@ -129,6 +136,7 @@ const PostCarPage = () => {
         form.setValue("price", data.price.toString());
         form.setValue("description", data.description);
         form.setValue("condition", carCondition);
+        form.setValue("fuelType", data.fuel_type || "petrol");
       }
     } catch (error: any) {
       console.error("Error fetching car details:", error);
@@ -152,6 +160,7 @@ const PostCarPage = () => {
       price: "",
       description: "",
       condition: "new" as CarCondition,
+      fuelType: "petrol",
     },
     mode: "onChange",
   });
@@ -295,6 +304,7 @@ const PostCarPage = () => {
         price: parseInt(values.price),
         description: values.description,
         condition: condition,
+        fuel_type: values.fuelType,
         user_id: user.id,
         image_url: uploadedImageUrl,
       };
@@ -424,26 +434,9 @@ const PostCarPage = () => {
                   name="price"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Price</FormLabel>
+                      <FormLabel>Price (Rs)</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., 15000" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Describe the car's condition, features, etc."
-                          className="resize-none"
-                          {...field}
-                        />
+                        <Input placeholder="e.g., 1500000" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -471,6 +464,49 @@ const PostCarPage = () => {
                           </SelectGroup>
                         </SelectContent>
                       </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="fuelType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Fuel Type</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select fuel type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectGroup>
+                            {fuelTypeOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Describe the car's condition, features, etc."
+                          className="resize-none"
+                          {...field}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

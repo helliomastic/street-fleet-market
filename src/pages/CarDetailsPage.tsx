@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Calendar, DollarSign, MapPin, User, Mail, Phone, ArrowLeft, Share2 } from "lucide-react";
+import { Calendar, DollarSign, MapPin, User, Mail, Phone, ArrowLeft, Share2, Fuel } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { CarListing } from "@/components/car/CarCard";
 import { supabase } from "@/integrations/supabase/client";
@@ -46,6 +46,15 @@ const CarDetailsPage = () => {
     }).format(price).replace('NPR', 'Rs');
   };
 
+  const getFuelTypeDisplay = (fuelType: string) => {
+    const fuelTypeMap: Record<string, string> = {
+      'petrol': 'Petrol',
+      'diesel': 'Diesel',
+      'electric': 'Electric'
+    };
+    return fuelTypeMap[fuelType] || fuelType;
+  };
+
   useEffect(() => {
     const fetchCarDetails = async () => {
       try {
@@ -83,6 +92,7 @@ const CarDetailsPage = () => {
           condition: carData.condition,
           sellerName: 'Anonymous',
           createdAt: new Date(carData.created_at || new Date()),
+          fuelType: carData.fuel_type || 'petrol',
         };
         
         setCar(formattedCar);
@@ -126,6 +136,7 @@ const CarDetailsPage = () => {
             condition: car.condition,
             sellerName: 'Anonymous',
             createdAt: new Date(car.created_at || new Date()),
+            fuelType: car.fuel_type || 'petrol',
           }));
           setSimilarCars(formattedSimilarCars);
         }
@@ -306,6 +317,10 @@ const CarDetailsPage = () => {
                   <span>Year: {car.year}</span>
                 </div>
                 <div className="flex items-center">
+                  <Fuel className="h-4 w-4 mr-1" />
+                  <span>Fuel: {getFuelTypeDisplay(car.fuelType)}</span>
+                </div>
+                <div className="flex items-center">
                   <MapPin className="h-4 w-4 mr-1" />
                   <span>Location: San Francisco, CA</span>
                 </div>
@@ -344,8 +359,8 @@ const CarDetailsPage = () => {
                     <p className="font-medium">{car.condition.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
                   </div>
                   <div>
-                    <p className="text-gray-500 text-sm">Body Style</p>
-                    <p className="font-medium">Sedan</p>
+                    <p className="text-gray-500 text-sm">Fuel Type</p>
+                    <p className="font-medium">{getFuelTypeDisplay(car.fuelType)}</p>
                   </div>
                   <div>
                     <p className="text-gray-500 text-sm">Transmission</p>

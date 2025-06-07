@@ -10,6 +10,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CarListing } from "./CarListing";
 
 interface CarEditFormProps {
@@ -127,13 +134,47 @@ export const CarEditForm = ({
             >
               Condition
             </label>
-            <Input
-              id="condition"
+            <Select
               value={editingCar.condition}
-              onChange={(e) =>
-                setEditingCar({ ...editingCar, condition: e.target.value })
+              onValueChange={(value) =>
+                setEditingCar({ ...editingCar, condition: value })
               }
-            />
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select condition" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="new">New</SelectItem>
+                <SelectItem value="like_new">Like New</SelectItem>
+                <SelectItem value="excellent">Excellent</SelectItem>
+                <SelectItem value="good">Good</SelectItem>
+                <SelectItem value="fair">Fair</SelectItem>
+                <SelectItem value="poor">Poor</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label
+              htmlFor="fuel_type"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed"
+            >
+              Fuel Type
+            </label>
+            <Select
+              value={editingCar.fuel_type}
+              onValueChange={(value) =>
+                setEditingCar({ ...editingCar, fuel_type: value })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select fuel type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="petrol">Petrol</SelectItem>
+                <SelectItem value="diesel">Diesel</SelectItem>
+                <SelectItem value="electric">Electric</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <div>

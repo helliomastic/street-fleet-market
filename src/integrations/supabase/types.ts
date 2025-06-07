@@ -14,6 +14,7 @@ export type Database = {
           condition: string
           created_at: string
           description: string
+          fuel_type: string
           id: string
           image_url: string | null
           make: string
@@ -28,6 +29,7 @@ export type Database = {
           condition: string
           created_at?: string
           description: string
+          fuel_type?: string
           id?: string
           image_url?: string | null
           make: string
@@ -42,6 +44,7 @@ export type Database = {
           condition?: string
           created_at?: string
           description?: string
+          fuel_type?: string
           id?: string
           image_url?: string | null
           make?: string

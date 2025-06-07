@@ -36,6 +36,7 @@ export interface CarListing {
   condition: string;
   sellerName: string;
   createdAt: Date;
+  fuelType: string;
 }
 
 interface CarCardProps {
@@ -69,6 +70,16 @@ const CarCard = ({ car }: CarCardProps) => {
       'poor': 'Poor'
     };
     return conditionMap[condition] || condition;
+  };
+  
+  // Get fuel type display text
+  const getFuelTypeDisplay = (fuelType: string) => {
+    const fuelTypeMap: Record<string, string> = {
+      'petrol': 'Petrol',
+      'diesel': 'Diesel',
+      'electric': 'Electric'
+    };
+    return fuelTypeMap[fuelType] || fuelType;
   };
   
   const handleDelete = async () => {
@@ -160,12 +171,19 @@ const CarCard = ({ car }: CarCardProps) => {
                 No image available
               </div>
             )}
-            <Badge 
-              className="absolute top-2 right-2"
-              variant={car.condition === 'new' ? "default" : "secondary"}
-            >
-              {getConditionDisplay(car.condition)}
-            </Badge>
+            <div className="absolute top-2 right-2 flex gap-1">
+              <Badge 
+                variant={car.condition === 'new' ? "default" : "secondary"}
+              >
+                {getConditionDisplay(car.condition)}
+              </Badge>
+              <Badge 
+                variant="outline"
+                className="bg-white/90"
+              >
+                {getFuelTypeDisplay(car.fuelType)}
+              </Badge>
+            </div>
           </div>
           <CardContent className="p-4">
             <h3 className="font-bold text-lg mb-1 truncate">{car.title}</h3>

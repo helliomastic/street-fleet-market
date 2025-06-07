@@ -1,3 +1,4 @@
+
 import { useState, useRef, useImperativeHandle, forwardRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ interface SearchFiltersProps {
 const SearchFilters = forwardRef<any, SearchFiltersProps>(({ onFilterChange }, ref) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [make, setMake] = useState("All Makes");
+  const [fuelType, setFuelType] = useState("All Fuel Types");
   const [minYear, setMinYear] = useState(2000);
   const [maxYear, setMaxYear] = useState(new Date().getFullYear());
   const [priceRange, setPriceRange] = useState([0, 5000000]); // Updated to Rs 50 lakhs max
@@ -26,6 +28,7 @@ const SearchFilters = forwardRef<any, SearchFiltersProps>(({ onFilterChange }, r
   const resetFilters = () => {
     setSearchTerm("");
     setMake("All Makes");
+    setFuelType("All Fuel Types");
     setMinYear(2000);
     setMaxYear(new Date().getFullYear());
     setPriceRange([0, 5000000]);
@@ -34,6 +37,7 @@ const SearchFilters = forwardRef<any, SearchFiltersProps>(({ onFilterChange }, r
     onFilterChange({
       searchTerm: "",
       make: "All Makes",
+      fuelType: "All Fuel Types",
       minYear: 2000,
       maxYear: new Date().getFullYear(),
       priceRange: [0, 5000000]
@@ -49,6 +53,7 @@ const SearchFilters = forwardRef<any, SearchFiltersProps>(({ onFilterChange }, r
     const filters = {
       searchTerm: newFilters.searchTerm !== undefined ? newFilters.searchTerm : searchTerm,
       make: newFilters.make !== undefined ? newFilters.make : make,
+      fuelType: newFilters.fuelType !== undefined ? newFilters.fuelType : fuelType,
       minYear: newFilters.minYear !== undefined ? newFilters.minYear : minYear,
       maxYear: newFilters.maxYear !== undefined ? newFilters.maxYear : maxYear,
       priceRange: newFilters.priceRange !== undefined ? newFilters.priceRange : priceRange,
@@ -64,6 +69,11 @@ const SearchFilters = forwardRef<any, SearchFiltersProps>(({ onFilterChange }, r
   const handleMakeChange = (value: string) => {
     setMake(value);
     applyFilters({ make: value });
+  };
+
+  const handleFuelTypeChange = (value: string) => {
+    setFuelType(value);
+    applyFilters({ fuelType: value });
   };
 
   const handleYearChange = (type: 'min' | 'max', value: string) => {
@@ -96,12 +106,16 @@ const SearchFilters = forwardRef<any, SearchFiltersProps>(({ onFilterChange }, r
     "Ford", "Chevrolet", "Volkswagen", "BMW", "Mercedes-Benz", "Audi"
   ];
 
+  const fuelTypes = [
+    "All Fuel Types", "Petrol", "Diesel", "Electric"
+  ];
+
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: currentYear - 1999 }, (_, i) => currentYear - i);
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm mb-8 border">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
         {/* Search */}
         <div className="space-y-2">
           <Label htmlFor="search">Search</Label>
@@ -129,6 +143,23 @@ const SearchFilters = forwardRef<any, SearchFiltersProps>(({ onFilterChange }, r
               {carMakes.map((carMake) => (
                 <SelectItem key={carMake} value={carMake}>
                   {carMake}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Fuel Type */}
+        <div className="space-y-2">
+          <Label htmlFor="fuelType">Fuel Type</Label>
+          <Select value={fuelType} onValueChange={handleFuelTypeChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select fuel type" />
+            </SelectTrigger>
+            <SelectContent>
+              {fuelTypes.map((fuel) => (
+                <SelectItem key={fuel} value={fuel}>
+                  {fuel}
                 </SelectItem>
               ))}
             </SelectContent>
