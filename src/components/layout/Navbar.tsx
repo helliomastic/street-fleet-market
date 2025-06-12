@@ -1,8 +1,15 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { 
-  Menu, X, Car, User, LogOut, Settings, PlusSquare, MessageSquare
+import {
+  Menu,
+  X,
+  Car,
+  User,
+  LogOut,
+  Settings,
+  PlusSquare,
+  MessageSquare,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/components/ui/use-toast";
@@ -31,15 +38,15 @@ const Navbar = () => {
 
   useEffect(() => {
     if (!user) return;
-    
+
     const fetchUnreadMessages = async () => {
       try {
         const { data, error, count } = await supabase
-          .from('messages')
-          .select('*', { count: 'exact' })
-          .eq('recipient_id', user.id as any)
-          .eq('read', false as any);
-          
+          .from("messages")
+          .select("*", { count: "exact" })
+          .eq("recipient_id", user.id as any)
+          .eq("read", false as any);
+
         if (error) {
           console.error("Error fetching unread messages:", error);
         } else if (count !== null) {
@@ -49,21 +56,25 @@ const Navbar = () => {
         console.error("Error fetching unread messages:", error);
       }
     };
-    
+
     fetchUnreadMessages();
-    
+
     const channel = supabase
-      .channel('public:messages')
-      .on('postgres_changes', { 
-        event: 'INSERT', 
-        schema: 'public', 
-        table: 'messages',
-        filter: `recipient_id=eq.${user.id}`
-      }, (payload) => {
-        setUnreadCount(prev => prev + 1);
-      })
+      .channel("public:messages")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `recipient_id=eq.${user.id}`,
+        },
+        (payload) => {
+          setUnreadCount((prev) => prev + 1);
+        }
+      )
       .subscribe();
-      
+
     return () => {
       supabase.removeChannel(channel);
     };
@@ -74,7 +85,7 @@ const Navbar = () => {
       await signOut();
       toast({
         title: "Logged out",
-        description: "You have been logged out successfully"
+        description: "You have been logged out successfully",
       });
       navigate("/");
     } catch (error) {
@@ -82,7 +93,7 @@ const Navbar = () => {
       toast({
         variant: "destructive",
         title: "Logout failed",
-        description: "Could not log you out. Please try again."
+        description: "Could not log you out. Please try again.",
       });
     }
   };
@@ -98,19 +109,31 @@ const Navbar = () => {
 
           {!isMobile && (
             <div className="flex items-center space-x-6">
-              <Link to="/" className="hover:text-brand-orange transition-colors">
+              <Link
+                to="/"
+                className="hover:text-brand-orange transition-colors"
+              >
                 Home
               </Link>
-              <Link to="/about" className="hover:text-brand-orange transition-colors">
+              <Link
+                to="/about"
+                className="hover:text-brand-orange transition-colors"
+              >
                 About
               </Link>
-              <Link to="/contact" className="hover:text-brand-orange transition-colors">
+              <Link
+                to="/contact"
+                className="hover:text-brand-orange transition-colors"
+              >
                 Contact
               </Link>
-              
+
               {user && (
                 <>
-                  <Link to="/dashboard" className="hover:text-brand-orange transition-colors flex items-center">
+                  <Link
+                    to="/dashboard"
+                    className="hover:text-brand-orange transition-colors flex items-center"
+                  >
                     Dashboard
                     {unreadCount > 0 && (
                       <span className="ml-2 bg-red-500 text-white rounded-full px-2 py-0.5 text-xs">
@@ -118,11 +141,17 @@ const Navbar = () => {
                       </span>
                     )}
                   </Link>
-                  <Link to="/post-car" className="hover:text-brand-orange transition-colors">
+                  <Link
+                    to="/post-car"
+                    className="hover:text-brand-orange transition-colors"
+                  >
                     Post a Car
                   </Link>
                   {isAdmin && (
-                    <Link to="/admin" className="hover:text-brand-orange transition-colors">
+                    <Link
+                      to="/admin"
+                      className="hover:text-brand-orange transition-colors"
+                    >
                       Admin Panel
                     </Link>
                   )}
@@ -137,8 +166,14 @@ const Navbar = () => {
             ) : user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative rounded-full h-8 w-8 bg-brand-orange">
-                    <span className="font-bold">{user.user_metadata.full_name?.charAt(0) || user.email?.charAt(0)}</span>
+                  <Button
+                    variant="ghost"
+                    className="relative rounded-full h-8 w-8 bg-brand-orange"
+                  >
+                    <span className="font-bold">
+                      {user.user_metadata.full_name?.charAt(0) ||
+                        user.email?.charAt(0)}
+                    </span>
                     {unreadCount > 0 && (
                       <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full px-1.5 py-0.5 text-xs">
                         {unreadCount}
@@ -152,7 +187,10 @@ const Navbar = () => {
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link to="/dashboard" className="cursor-pointer flex items-center justify-between">
+                    <Link
+                      to="/dashboard"
+                      className="cursor-pointer flex items-center justify-between"
+                    >
                       <div className="flex items-center">
                         <User className="mr-2 h-4 w-4" />
                         <span>Dashboard</span>
@@ -165,21 +203,30 @@ const Navbar = () => {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/post-car" className="cursor-pointer flex items-center">
+                    <Link
+                      to="/post-car"
+                      className="cursor-pointer flex items-center"
+                    >
                       <PlusSquare className="mr-2 h-4 w-4" />
                       <span>Post a Car</span>
                     </Link>
                   </DropdownMenuItem>
                   {isAdmin && (
                     <DropdownMenuItem asChild>
-                      <Link to="/admin" className="cursor-pointer flex items-center">
+                      <Link
+                        to="/admin"
+                        className="cursor-pointer flex items-center"
+                      >
                         <Settings className="mr-2 h-4 w-4" />
                         <span>Admin Panel</span>
                       </Link>
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-500 focus:text-red-500">
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="cursor-pointer text-red-500 focus:text-red-500"
+                  >
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>
                   </DropdownMenuItem>
@@ -187,7 +234,7 @@ const Navbar = () => {
               </DropdownMenu>
             ) : (
               <div className="flex space-x-2">
-                <Button variant="outline" asChild className="text-white border-white hover:bg-white hover:text-brand-blue">
+                <Button asChild className="bg-blue-600 hover:bg-blue-700">
                   <Link to="/auth?tab=signup">Sign Up</Link>
                 </Button>
                 <Button asChild className="bg-purple-600 hover:bg-purple-700">
@@ -211,19 +258,31 @@ const Navbar = () => {
           {isMobile && isMenuOpen && (
             <div className="pt-4 pb-3 border-t border-brand-lightBlue mt-3 animate-fade-in">
               <div className="flex flex-col space-y-3">
-                <Link to="/" className="hover:text-brand-orange transition-colors">
+                <Link
+                  to="/"
+                  className="hover:text-brand-orange transition-colors"
+                >
                   Home
                 </Link>
-                <Link to="/about" className="hover:text-brand-orange transition-colors">
+                <Link
+                  to="/about"
+                  className="hover:text-brand-orange transition-colors"
+                >
                   About
                 </Link>
-                <Link to="/contact" className="hover:text-brand-orange transition-colors">
+                <Link
+                  to="/contact"
+                  className="hover:text-brand-orange transition-colors"
+                >
                   Contact
                 </Link>
-                
+
                 {user && (
                   <>
-                    <Link to="/dashboard" className="hover:text-brand-orange transition-colors flex items-center">
+                    <Link
+                      to="/dashboard"
+                      className="hover:text-brand-orange transition-colors flex items-center"
+                    >
                       Dashboard
                       {unreadCount > 0 && (
                         <span className="ml-2 bg-red-500 text-white rounded-full px-2 py-0.5 text-xs">
@@ -231,11 +290,17 @@ const Navbar = () => {
                         </span>
                       )}
                     </Link>
-                    <Link to="/post-car" className="hover:text-brand-orange transition-colors">
+                    <Link
+                      to="/post-car"
+                      className="hover:text-brand-orange transition-colors"
+                    >
                       Post a Car
                     </Link>
                     {isAdmin && (
-                      <Link to="/admin" className="hover:text-brand-orange transition-colors">
+                      <Link
+                        to="/admin"
+                        className="hover:text-brand-orange transition-colors"
+                      >
                         Admin Panel
                       </Link>
                     )}
@@ -243,10 +308,16 @@ const Navbar = () => {
                 )}
                 {!user && (
                   <>
-                    <Link to="/auth?tab=login" className="hover:text-brand-orange transition-colors">
+                    <Link
+                      to="/auth?tab=login"
+                      className="hover:text-brand-orange transition-colors"
+                    >
                       Login
                     </Link>
-                    <Link to="/auth?tab=signup" className="hover:text-purple-600 hover:text-purple-700 transition-colors">
+                    <Link
+                      to="/auth?tab=login"
+                      className="hover:text-brand-orange transition-colors"
+                    >
                       Sign Up
                     </Link>
                   </>
