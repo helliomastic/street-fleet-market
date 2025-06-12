@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { CarListing } from "@/components/admin/CarListing";
+import { CarListing, convertToCarListing } from "@/components/admin/CarListing";
 import { UserProfile } from "@/components/admin/UserManagement";
 
 export interface Message {
@@ -40,7 +40,8 @@ export const useAdminData = () => {
         return;
       }
       
-      setCars(data || []);
+      const convertedCars = (data || []).map(convertToCarListing);
+      setCars(convertedCars);
     } catch (error: any) {
       toast({
         title: "Error",

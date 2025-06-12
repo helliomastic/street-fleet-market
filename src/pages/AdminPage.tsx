@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
@@ -7,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Car, Users, MessageSquare, Mail } from "lucide-react";
 
 // Import refactored components
-import { CarListingComponent } from "@/components/admin/CarListing";
+import { CarListingComponent } from "@/components/admin/CarListingComponent";
 import { UserManagement } from "@/components/admin/UserManagement";
 import { MessagesTab } from "@/components/admin/MessagesTab";
 import { ContactSubmissions } from "@/components/admin/components/ContactSubmissions";

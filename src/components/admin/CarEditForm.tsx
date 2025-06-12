@@ -1,4 +1,3 @@
-
 import { 
   Card, 
   CardContent,
@@ -161,9 +160,9 @@ export const CarEditForm = ({
               Fuel Type
             </label>
             <Select
-              value={editingCar.fuelType}
+              value={editingCar.fuel_type}
               onValueChange={(value) =>
-                setEditingCar({ ...editingCar, fuelType: value })
+                setEditingCar({ ...editingCar, fuel_type: value })
               }
             >
               <SelectTrigger>
