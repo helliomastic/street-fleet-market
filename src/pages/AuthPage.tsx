@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -245,7 +244,7 @@ const AuthPage = () => {
                       />
                       <Button 
                         type="submit" 
-                        className="w-full bg-brand-orange hover:bg-opacity-90"
+                        className="w-full bg-brand-orange hover:bg-brand-orange/90"
                         disabled={isLoading}
                       >
                         {isLoading ? "Logging in..." : "Login"}
@@ -308,7 +307,7 @@ const AuthPage = () => {
                       />
                       <Button 
                         type="submit" 
-                        className="w-full bg-brand-orange hover:bg-opacity-90"
+                        className="w-full bg-brand-orange hover:bg-brand-orange/90"
                         disabled={isLoading}
                       >
                         {isLoading ? "Creating account..." : "Create Account"}
