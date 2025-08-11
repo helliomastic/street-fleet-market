@@ -28,9 +28,10 @@ const loginSchema = z.object({
 
 const signupSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
-  password: z.string().min(6, {
-    message: "Password must be at least 6 characters.",
-  }),
+  password: z
+    .string()
+    .min(6, { message: "Password must be at least 6 characters." })
+    .regex(/[^A-Za-z0-9]/, { message: "Include at least one special character." }),
   fullName: z.string().min(2, {
     message: "Full name must be at least 2 characters.",
   }),
@@ -301,6 +302,7 @@ const AuthPage = () => {
                             <FormControl>
                               <Input type="password" placeholder="••••••••" {...field} />
                             </FormControl>
+                            <p className="text-xs text-muted-foreground">Must be 6+ characters and include a special character.</p>
                             <FormMessage />
                           </FormItem>
                         )}
