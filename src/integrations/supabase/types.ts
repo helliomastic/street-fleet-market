@@ -14,13 +14,170 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cars: {
+        Row: {
+          condition: string
+          created_at: string
+          description: string | null
+          fuel_type: string
+          id: string
+          image_url: string | null
+          is_sold: boolean
+          location: string | null
+          make: string
+          mileage: number | null
+          model: string
+          price: number
+          title: string
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          condition: string
+          created_at?: string
+          description?: string | null
+          fuel_type: string
+          id?: string
+          image_url?: string | null
+          is_sold?: boolean
+          location?: string | null
+          make: string
+          mileage?: number | null
+          model: string
+          price: number
+          title: string
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          condition?: string
+          created_at?: string
+          description?: string | null
+          fuel_type?: string
+          id?: string
+          image_url?: string | null
+          is_sold?: boolean
+          location?: string | null
+          make?: string
+          mileage?: number | null
+          model?: string
+          price?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      contact_submissions: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          message: string
+          name: string
+          status: string
+          subject: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          message: string
+          name: string
+          status?: string
+          subject: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string
+          name?: string
+          status?: string
+          subject?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          car_id: string
+          created_at: string
+          id: string
+          message: string
+          read: boolean
+          recipient_id: string
+          sender_id: string
+        }
+        Insert: {
+          car_id: string
+          created_at?: string
+          id?: string
+          message: string
+          read?: boolean
+          recipient_id: string
+          sender_id: string
+        }
+        Update: {
+          car_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          read?: boolean
+          recipient_id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_car_id_fkey"
+            columns: ["car_id"]
+            isOneToOne: false
+            referencedRelation: "cars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      delete_car_messages: {
+        Args: { car_uuid: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

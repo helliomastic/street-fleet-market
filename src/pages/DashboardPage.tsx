@@ -91,7 +91,7 @@ const DashboardPage = () => {
       console.log("Deleting car with ID:", carId);
       
       const { error: messagesError } = await supabase
-        .rpc('delete_car_messages', { car_id_param: carId });
+        .rpc('delete_car_messages', { car_uuid: carId });
       
       if (messagesError) {
         console.error("Error deleting related messages:", messagesError);

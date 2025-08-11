@@ -48,15 +48,15 @@ const HomePage = () => {
       if (userIds.length > 0) {
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
-          .select('id, full_name, username')
-          .in('id', userIds);
+          .select('user_id, full_name')
+          .in('user_id', userIds);
           
         if (profilesError) {
           console.error("Error fetching profiles:", profilesError);
         } else if (profilesData) {
           // Create a map of user_id to profile data
           profilesData.forEach(profile => {
-            userProfiles[profile.id] = profile;
+            userProfiles[profile.user_id] = profile;
           });
         }
       }
@@ -80,7 +80,7 @@ const HomePage = () => {
           userId: car.user_id,
           condition: car.condition,
           fuelType: car.fuel_type || 'petrol',
-          sellerName: profile.full_name || profile.username || 'Anonymous',
+          sellerName: profile.full_name || 'Anonymous',
           createdAt: new Date(car.created_at || new Date()),
         };
       });

@@ -5,10 +5,12 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface UserProfile {
   id: string;
+  user_id: string;
   email?: string;
   full_name?: string;
-  role: string;
-  is_admin?: boolean;
+  phone?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface UserManagementProps {
@@ -38,7 +40,7 @@ export const UserManagement = ({ users, loadingUsers }: UserManagementProps) => 
               <div>
                 <h3 className="font-bold text-lg">{user.full_name || "N/A"}</h3>
                 <p className="text-gray-500">{user.email}</p>
-                <p className="text-gray-500">Role: {user.role}</p>
+                <p className="text-gray-500">Phone: {user.phone || 'N/A'}</p>
               </div>
             </div>
           ))}

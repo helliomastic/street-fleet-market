@@ -31,7 +31,7 @@ export const CarListItem = ({ car, onEdit, fetchCars }: CarListItemProps) => {
       // Step 1: Delete all messages for this car using the RPC function
       console.log("Deleting messages for car:", id);
       const { error: messagesError } = await supabase
-        .rpc('delete_car_messages', { car_id_param: id });
+        .rpc('delete_car_messages', { car_uuid: id });
       
       if (messagesError) {
         console.error("Error deleting related messages:", messagesError);

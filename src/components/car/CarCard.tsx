@@ -92,7 +92,7 @@ const CarCard = ({ car }: CarCardProps) => {
       
       // Use the RPC function to safely delete all messages first
       const { error: messagesError } = await supabase
-        .rpc('delete_car_messages', { car_id_param: car.id });
+        .rpc('delete_car_messages', { car_uuid: car.id });
       
       if (messagesError) {
         console.error("Error deleting related messages:", messagesError);

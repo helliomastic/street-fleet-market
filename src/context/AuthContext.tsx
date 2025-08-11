@@ -153,7 +153,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       if (data) {
-        setIsAdmin(data.role === 'admin' || !!data.is_admin);
+        // For now, set admin to false since we don't have roles yet
+        setIsAdmin(false);
       } else {
         setIsAdmin(false);
       }
