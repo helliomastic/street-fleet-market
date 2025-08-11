@@ -98,16 +98,27 @@ const CarDetailsPage = () => {
         setCar(formattedCar);
         
         if (carData.user_id) {
-          const { data: profileData } = await supabase
+          const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .select('*')
             .eq('user_id', carData.user_id)
-            .single();
+            .maybeSingle();
+            
+          if (profileError) {
+            console.error("Error fetching seller profile:", profileError);
+          }
             
           if (profileData) {
             setSeller({
-              id: profileData.id,
+              id: profileData.user_id, // Use user_id as the seller id
               name: profileData.full_name || 'Anonymous',
+              email: profileData.email || 'contact@example.com',
+            });
+          } else {
+            // Create a fallback seller object even if no profile exists
+            setSeller({
+              id: carData.user_id,
+              name: 'Anonymous',
               email: 'contact@example.com',
             });
           }
@@ -322,7 +333,7 @@ const CarDetailsPage = () => {
                 </div>
                 <div className="flex items-center">
                   <MapPin className="h-4 w-4 mr-1" />
-                  <span>Location: San Francisco, CA</span>
+                  <span>Location: Kathmandu, Nepal</span>
                 </div>
                 <div className="flex items-center">
                   <User className="h-4 w-4 mr-1" />
