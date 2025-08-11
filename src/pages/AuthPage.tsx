@@ -26,16 +26,22 @@ const loginSchema = z.object({
   }),
 });
 
-const signupSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address." }),
-  password: z
-    .string()
-    .min(6, { message: "Password must be at least 6 characters." })
-    .regex(/[^A-Za-z0-9]/, { message: "Include at least one special character." }),
-  fullName: z.string().min(2, {
-    message: "Full name must be at least 2 characters.",
-  }),
-});
+const signupSchema = z
+  .object({
+    email: z.string().email({ message: "Please enter a valid email address." }),
+    password: z
+      .string()
+      .min(6, { message: "Password must be at least 6 characters." })
+      .regex(/[^A-Za-z0-9]/, { message: "Include at least one special character." }),
+    confirmPassword: z.string().min(1, { message: "Please confirm your password." }),
+    fullName: z.string().min(2, {
+      message: "Full name must be at least 2 characters.",
+    }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "Passwords do not match.",
+  });
 
 const AuthPage = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -62,6 +68,7 @@ const AuthPage = () => {
     defaultValues: {
       email: "",
       password: "",
+      confirmPassword: "",
       fullName: "",
     },
   });
@@ -303,6 +310,19 @@ const AuthPage = () => {
                               <Input type="password" placeholder="••••••••" {...field} />
                             </FormControl>
                             <p className="text-xs text-muted-foreground">Must be 6+ characters and include a special character.</p>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={signupForm.control}
+                        name="confirmPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Confirm Password</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="Re-enter password" {...field} />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
