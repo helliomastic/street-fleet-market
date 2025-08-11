@@ -45,27 +45,41 @@ const ContactPage = () => {
   const onSubmit = async (data: ContactFormData) => {
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.from('contact_submissions').insert({
+      // 1) Store submission in DB
+      const { error: dbError } = await supabase.from('contact_submissions').insert({
         name: data.name,
         email: data.email,
         subject: data.subject,
         message: data.message
       });
-      
-      if (error) {
-        throw new Error(error.message);
-      }
+      if (dbError) throw new Error(dbError.message);
 
-      toast({
-        title: "Message Sent Successfully",
-        description: "We'll get back to you soon!",
-        variant: "default"
+      // 2) Send email via Edge Function
+      const { error: fnError } = await supabase.functions.invoke('send-contact-email', {
+        body: {
+          name: data.name,
+          email: data.email,
+          subject: data.subject,
+          message: data.message,
+        }
       });
+
+      if (fnError) {
+        console.error('Edge function error:', fnError);
+        toast({
+          title: "Message saved",
+          description: "We received your message, but emailing failed. We'll review it shortly.",
+        });
+      } else {
+        toast({
+          title: "Message Sent Successfully",
+          description: "Thank you! We'll get back to you soon.",
+        });
+      }
 
       form.reset();
     } catch (error) {
       console.error('Contact form submission error:', error);
-      
       toast({
         title: "Error Sending Message",
         description: error instanceof Error ? error.message : "Please try again later.",
@@ -156,7 +170,7 @@ const ContactPage = () => {
 
               <Button 
                 type="submit" 
-                className="w-full" 
+                className="w-full bg-brand-blue" 
                 disabled={isSubmitting}
               >
                 {isSubmitting ? 'Sending...' : 'Send Message'}
