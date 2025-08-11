@@ -8,14 +8,6 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-// Define car condition type
-export type CarCondition = "new" | "like_new" | "excellent" | "good" | "fair" | "poor";
-
-// Helper function to validate car condition
-export const isValidCarCondition = (condition: any): condition is CarCondition => {
-  return ["new", "like_new", "excellent", "good", "fair", "poor"].includes(condition);
-};
-
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: localStorage,
