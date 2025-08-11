@@ -86,7 +86,7 @@ const CarDetailsPage = () => {
           price: carData.price,
           description: carData.description,
           image: carData.image_url,
-          location: "United States",
+          location: "Nepal",
           postedDate: new Date(carData.created_at || new Date()),
           userId: carData.user_id,
           condition: carData.condition,
@@ -101,7 +101,7 @@ const CarDetailsPage = () => {
           const { data: profileData } = await supabase
             .from('profiles')
             .select('*')
-            .eq('id', carData.user_id)
+            .eq('user_id', carData.user_id)
             .single();
             
           if (profileData) {
@@ -130,7 +130,7 @@ const CarDetailsPage = () => {
             price: car.price,
             description: car.description,
             image: car.image_url,
-            location: "United States",
+            location: "Nepal",
             postedDate: new Date(car.created_at || new Date()),
             userId: car.user_id,
             condition: car.condition,

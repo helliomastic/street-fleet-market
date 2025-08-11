@@ -60,14 +60,14 @@ export const useMessages = (userId: string | undefined) => {
             const { data: senderData } = await supabase
               .from('profiles')
               .select('full_name')
-              .eq('id', msg.sender_id)
+              .eq('user_id', msg.sender_id)
               .maybeSingle();
               
             // Get recipient profile (should be the current user)
             const { data: recipientData } = await supabase
               .from('profiles')
               .select('full_name')
-              .eq('id', msg.recipient_id)
+              .eq('user_id', msg.recipient_id)
               .maybeSingle();
               
             return {
@@ -119,14 +119,14 @@ export const useMessages = (userId: string | undefined) => {
             const { data: senderData } = await supabase
               .from('profiles')
               .select('full_name')
-              .eq('id', msg.sender_id)
+              .eq('user_id', msg.sender_id)
               .maybeSingle();
               
             // Get recipient profile
             const { data: recipientData } = await supabase
               .from('profiles')
               .select('full_name')
-              .eq('id', msg.recipient_id)
+              .eq('user_id', msg.recipient_id)
               .maybeSingle();
               
             return {

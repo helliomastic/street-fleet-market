@@ -75,7 +75,7 @@ const HomePage = () => {
           price: car.price,
           description: car.description,
           image: car.image_url,
-          location: "United States", // Default location
+          location: "Nepal", // Default location
           postedDate: new Date(car.created_at || new Date()),
           userId: car.user_id,
           condition: car.condition,
