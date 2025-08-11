@@ -165,6 +165,12 @@ const CarCard = ({ car }: CarCardProps) => {
                 src={car.image} 
                 alt={car.title} 
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  // Fallback to placeholder if image fails to load
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  target.parentElement!.innerHTML = '<div class="flex items-center justify-center h-full bg-gray-100 text-gray-400">Image not available</div>';
+                }}
               />
             ) : (
               <div className="flex items-center justify-center h-full bg-gray-100 text-gray-400">

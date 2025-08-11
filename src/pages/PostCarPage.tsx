@@ -257,42 +257,42 @@ const PostCarPage = () => {
             description: "Please wait while your image uploads.",
           });
 
+          // Start progress animation
           const progressInterval = setInterval(() => {
             setUploadProgress((prev) => {
-              const newProgress = prev + 10;
-              return newProgress > 90 ? 90 : newProgress;
+              const newProgress = prev + 5;
+              return newProgress > 85 ? 85 : newProgress;
             });
-          }, 300);
+          }, 200);
 
-          const { data, error } = await supabase.storage
-            .from('car-images')
-            .upload(uniqueFileName, imageFile, {
-              cacheControl: '3600',
-              upsert: false
-            });
+          try {
+            const { data, error } = await supabase.storage
+              .from('car-images')
+              .upload(uniqueFileName, imageFile, {
+                cacheControl: '3600',
+                upsert: false
+              });
 
-          clearInterval(progressInterval);
-          setUploadProgress(100);
-
-          if (error) {
-            console.error("Error uploading image:", error);
+            clearInterval(progressInterval);
+            
+            if (error) {
+              throw error;
+            }
+            
+            setUploadProgress(100);
+            
+            uploadedImageUrl = `https://bmmfjijvuyiecaxvbbcy.supabase.co/storage/v1/object/public/car-images/${data.path}`;
+            setImageUrl(uploadedImageUrl);
+            
             toast({
-              variant: "destructive",
-              title: "Error",
-              description: "Failed to upload image: " + error.message
+              title: "Image uploaded",
+              description: "Your image has been uploaded successfully.",
             });
-            setIsSubmitting(false);
-            setIsUploading(false);
-            return;
+          } catch (uploadError) {
+            clearInterval(progressInterval);
+            throw uploadError;
           }
 
-          uploadedImageUrl = `https://pcyuwktvexjrzuiusilt.supabase.co/storage/v1/object/public/car-images/${data.path}`;
-          setImageUrl(uploadedImageUrl);
-          
-          toast({
-            title: "Image uploaded",
-            description: "Your image has been uploaded successfully.",
-          });
         }
       }
       
