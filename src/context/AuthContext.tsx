@@ -109,27 +109,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const ensureUserProfileExists = async (user: User) => {
     try {
+      // Check by user_id (not id)
       const { data: existingProfile, error: checkError } = await supabase
         .from('profiles')
-        .select('id')
-        .eq('id', user.id)
-        .single();
-      
-      if (checkError || !existingProfile) {
+        .select('user_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('Error fetching profile:', checkError);
+      }
+
+      if (!existingProfile) {
         const fullName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
-        const username = user.email?.split('@')[0] || `user_${Math.random().toString(36).substring(2, 10)}`;
-        
+
         const profileData = {
-          id: user.id,
+          user_id: user.id,
           full_name: fullName,
-          username: username,
-          role: 'user'
+          email: user.email ?? null,
         };
-        
+
         const { error: insertError } = await supabase
           .from('profiles')
           .insert(profileData as any);
-        
+
         if (insertError) {
           console.error('Error creating profile:', insertError);
         }
@@ -139,28 +142,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const checkIsAdmin = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('role, is_admin')
-        .eq('id', userId)
-        .single();
-      
-      if (error) {
-        console.error('Error checking admin status:', error);
-        return;
-      }
-      
-      if (data) {
-        // For now, set admin to false since we don't have roles yet
-        setIsAdmin(false);
-      } else {
-        setIsAdmin(false);
-      }
-    } catch (error) {
-      console.error('Error checking admin status:', error);
-    }
+  const checkIsAdmin = async (_userId: string) => {
+    // Roles are not implemented; default to false to avoid schema errors
+    setIsAdmin(false);
   };
 
   const signOut = async () => {
