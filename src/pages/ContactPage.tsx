@@ -17,8 +17,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import { Mail, MessageCircle } from 'lucide-react';
-
 // Zod validation schema
 const contactFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),
@@ -67,13 +67,15 @@ const ContactPage = () => {
       if (fnError) {
         console.error('Edge function error:', fnError);
         toast({
-          title: "Message saved",
-          description: "We received your message, but emailing failed. We'll review it shortly.",
+          variant: "destructive",
+          title: "Message received, but email failed",
+          description: "We saved your message. Our team will still review it shortly.",
         });
       } else {
         toast({
-          title: "Message Sent Successfully",
-          description: "Thank you! We'll get back to you soon.",
+          title: "Message sent!",
+          description: "Thanks for reaching out — we’ve received your message and emailed it to our team.",
+          action: <ToastAction altText="Close">Close</ToastAction>,
         });
       }
 

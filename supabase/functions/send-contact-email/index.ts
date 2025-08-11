@@ -4,6 +4,8 @@ import { Resend } from "npm:resend@4.0.0";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Max-Age": "86400",
 };
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY") || "");
@@ -60,7 +62,7 @@ serve(async (req) => {
     `;
 
     const { error } = await resend.emails.send({
-      from: "Street Fleet <no-reply@resend.dev>",
+      from: "Street Fleet <onboarding@resend.dev>",
       to: [TARGET_EMAIL],
       reply_to: email,
       subject: `Contact: ${subject}`,

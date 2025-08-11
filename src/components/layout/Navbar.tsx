@@ -99,7 +99,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-brand-blue text-white shadow-md">
+    <nav className="sticky top-0 z-50 bg-brand-blue/90 text-white shadow-md backdrop-blur supports-[backdrop-filter]:bg-brand-blue/80 border-b border-border">
       <div className="container mx-auto px-4 py-3">
         <div className="flex justify-between items-center">
           <Link to="/" className="flex items-center space-x-2">
