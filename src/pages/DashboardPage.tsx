@@ -46,7 +46,7 @@ const DashboardPage = () => {
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", user?.id)
+        .eq("user_id", user?.id)
         .single();
 
       if (error) {
@@ -267,12 +267,12 @@ const DashboardPage = () => {
                         </div>
                         <div className="flex-1">
                           <h3 className="font-bold text-lg">{car.title}</h3>
-                          <p className="text-gray-500">
-                            {car.make} {car.model} {car.year}
-                          </p>
-                          <p className="font-bold text-brand-blue mt-2">
-                            ${car.price.toLocaleString()}
-                          </p>
+                         <p className="text-gray-500">
+                           {car.make} {car.model} {car.year}
+                         </p>
+                         <p className="font-bold text-brand-blue mt-2">
+                           Rs {car.price.toLocaleString()}
+                         </p>
                           <div className="mt-4 flex gap-2">
                             <button
                               onClick={() => navigate(`/car/${car.id}`)}
