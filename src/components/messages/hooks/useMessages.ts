@@ -15,7 +15,8 @@ export const useMessages = (userId: string | undefined) => {
   const fetchMessages = useCallback(async () => {
     if (!userId) return;
     
-    setLoading(true);
+    // Do not toggle the main loading state here to avoid UI flicker on realtime updates
+    // Initial load starts with loading=true by default
     setError(null);
     setRefreshing(true);
     
@@ -164,24 +165,52 @@ export const useMessages = (userId: string | undefined) => {
     
     fetchMessages();
     
-    // Set up realtime subscription for new messages
+    // Set up realtime subscription for message changes (both inbox and sent)
     const channel = supabase
-      .channel('messages-channel-' + userId) // Use unique channel name per user
-      .on('postgres_changes', { 
-        event: 'INSERT', 
-        schema: 'public', 
+      .channel('messages-channel-' + userId) // Unique channel per user
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
         table: 'messages',
         filter: `recipient_id=eq.${userId}`
       }, (payload) => {
         console.log('New message received:', payload);
         fetchMessages(); // Refresh messages when a new one arrives
-        
         toast({
           title: "New Message",
           description: "You have received a new message",
         });
       })
-      .subscribe();
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `sender_id=eq.${userId}`
+      }, (payload) => {
+        console.log('Message sent (self insert):', payload);
+        fetchMessages(); // Keep Sent tab in sync across tabs/devices
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'messages',
+        filter: `recipient_id=eq.${userId}`
+      }, (payload) => {
+        console.log('Message updated (recipient view):', payload);
+        fetchMessages();
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'messages',
+        filter: `sender_id=eq.${userId}`
+      }, (payload) => {
+        console.log('Message updated (sender view):', payload);
+        fetchMessages();
+      })
+      .subscribe((status) => {
+        console.log(`Messages realtime status for ${userId}:`, status);
+      });
       
     return () => {
       supabase.removeChannel(channel);

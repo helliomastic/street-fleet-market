@@ -32,22 +32,11 @@ export const MessageList = ({
   }
 
   if (messages.length === 0) {
-    const isInbox = userId && messages.some(m => m.recipient_id === userId);
     return (
       <div className="text-center py-6 bg-gray-50 rounded-lg">
-        {isInbox ? (
-          <>
-            <Mail className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-lg font-medium text-gray-900">No messages</h3>
-            <p className="mt-1 text-sm text-gray-500">You haven't received any messages yet.</p>
-          </>
-        ) : (
-          <>
-            <MessageSquare className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-lg font-medium text-gray-900">No sent messages</h3>
-            <p className="mt-1 text-sm text-gray-500">You haven't sent any messages yet.</p>
-          </>
-        )}
+        <Mail className="mx-auto h-12 w-12 text-gray-400" />
+        <h3 className="mt-2 text-lg font-medium text-gray-900">No messages</h3>
+        <p className="mt-1 text-sm text-gray-500">Your conversation list is empty.</p>
       </div>
     );
   }
