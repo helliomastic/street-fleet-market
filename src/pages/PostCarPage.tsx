@@ -32,7 +32,7 @@ import Layout from "@/components/layout/Layout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-
+import PriceSuggestion from "@/components/price/PriceSuggestion";
 const conditionOptions = [
   { value: "new", label: "New" },
   { value: "like_new", label: "Like New" },
@@ -437,6 +437,24 @@ const PostCarPage = () => {
                     </FormItem>
                   )}
                 />
+
+                <PriceSuggestion
+                  values={{
+                    make: form.watch("make"),
+                    model: form.watch("model"),
+                    year: form.watch("year"),
+                    condition: form.watch("condition"),
+                    fuelType: form.watch("fuelType"),
+                  }}
+                  onApply={(p) => {
+                    form.setValue("price", String(p), { shouldValidate: true });
+                    toast({
+                      title: "Suggested price applied",
+                      description: `Set to Rs ${p.toLocaleString()}`,
+                    });
+                  }}
+                />
+
                 <FormField
                   control={form.control}
                   name="price"
