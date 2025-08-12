@@ -144,6 +144,7 @@ export const CarCreateForm = ({
               year: newCar.year,
               condition: newCar.condition,
               fuelType: newCar.fuelType,
+              description: newCar.description,
             }}
             onApply={(p) => setNewCar({ ...newCar, price: p })}
           />

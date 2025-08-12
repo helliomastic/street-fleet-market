@@ -7,6 +7,7 @@ export type CarSample = {
   year: number;
   condition: string; // new | like_new | excellent | good | fair | poor
   fuel_type?: string;
+  description?: string;
   price: number;
 };
 
@@ -16,6 +17,7 @@ export type QueryInput = {
   year?: number | string;
   condition?: string;
   fuelType?: string;
+  description?: string;
 };
 
 export type KnnResult = {
@@ -50,6 +52,50 @@ function computeYearRange(data: CarSample[]): { min: number; max: number } | nul
   return { min: Math.min(...years), max: Math.max(...years) };
 }
 
+// --- Simple text similarity (cosine over token frequency) ---
+const STOPWORDS = new Set([
+  "the","and","a","an","to","of","in","on","for","is","it","this","that","with","as","by","at","from","are","was","be","or","we","you","your","our","car","vehicle"
+]);
+
+function normalizeText(s?: string): string {
+  return (s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function tokenize(s?: string): string[] {
+  const norm = normalizeText(s);
+  if (!norm) return [];
+  return norm
+    .split(/\s+/)
+    .filter((t) => t.length > 1 && !STOPWORDS.has(t));
+}
+
+function termFreq(tokens: string[]): Map<string, number> {
+  const m = new Map<string, number>();
+  tokens.forEach((t) => m.set(t, (m.get(t) || 0) + 1));
+  return m;
+}
+
+function cosineSim(aText?: string, bText?: string): number {
+  const aToks = tokenize(aText);
+  const bToks = tokenize(bText);
+  if (aToks.length === 0 || bToks.length === 0) return 0;
+  const aMap = termFreq(aToks);
+  const bMap = termFreq(bToks);
+  let dot = 0;
+  let aNorm = 0;
+  let bNorm = 0;
+  aMap.forEach((av, k) => {
+    aNorm += av * av;
+    const bv = bMap.get(k) || 0;
+    dot += av * bv;
+  });
+  bMap.forEach((bv) => {
+    bNorm += bv * bv;
+  });
+  if (aNorm === 0 || bNorm === 0) return 0;
+  return dot / (Math.sqrt(aNorm) * Math.sqrt(bNorm));
+}
+
 // Weighted distance. Smaller is more similar.
 function distance(a: CarSample, b: CarSample, yearRange: { min: number; max: number } | null) {
   const weights = {
@@ -58,6 +104,7 @@ function distance(a: CarSample, b: CarSample, yearRange: { min: number; max: num
     fuel: 0.5,
     year: 1.0,
     condition: 0.75,
+    description: 0.6,
   };
 
   let d = 0;
@@ -70,13 +117,19 @@ function distance(a: CarSample, b: CarSample, yearRange: { min: number; max: num
   // Year normalized difference
   if (Number.isFinite(a.year) && Number.isFinite(b.year)) {
     const range = yearRange ? Math.max(1, yearRange.max - yearRange.min) : 20; // fallback
-    d += weights.year * Math.abs(a.year - b.year) / range;
+    d += (weights.year * Math.abs(a.year - b.year)) / range;
   }
 
   // Condition ordinal difference (0..5)
   const ca = conditionScore(a.condition);
   const cb = conditionScore(b.condition);
-  d += weights.condition * Math.abs(ca - cb) / 5;
+  d += (weights.condition * Math.abs(ca - cb)) / 5;
+
+  // Description similarity (cosine). Higher similarity -> smaller distance
+  if (a.description && b.description) {
+    const sim = cosineSim(a.description, b.description); // 0..1
+    d += weights.description * (1 - sim);
+  }
 
   return d;
 }
@@ -93,6 +146,7 @@ export function suggestPriceKNN(query: QueryInput, dataset: CarSample[], k = 5, 
     year: qYear ?? NaN,
     condition: (query.condition || "") as string,
     fuel_type: (query.fuelType || "") as string,
+    description: (query.description || "") as string,
     price: NaN,
   };
 

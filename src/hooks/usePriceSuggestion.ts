@@ -14,7 +14,7 @@ export function usePriceSuggestion(input: QueryInput, opts?: { k?: number; round
     try {
       const { data, error } = await supabase
         .from("cars")
-        .select("make,model,year,price,condition,fuel_type")
+        .select("make,model,year,price,condition,fuel_type,description")
         .eq("is_sold", false);
 
       if (error) throw error;
@@ -28,6 +28,7 @@ export function usePriceSuggestion(input: QueryInput, opts?: { k?: number; round
           price: Number(d.price),
           condition: d.condition,
           fuel_type: d.fuel_type || undefined,
+          description: typeof d.description === "string" ? d.description : undefined,
         }));
 
       setData(cleaned);
@@ -48,7 +49,7 @@ export function usePriceSuggestion(input: QueryInput, opts?: { k?: number; round
   const result: KnnResult = useMemo(() => {
     if (!data) return { suggestedPrice: null, neighbors: [], confidence: 0 };
     return suggestPriceKNN(input, data, opts?.k ?? 5, opts?.roundStep ?? 1000);
-  }, [data, input.make, input.model, input.year, input.condition, input.fuelType, opts?.k, opts?.roundStep]);
+  }, [data, input.make, input.model, input.year, input.condition, input.fuelType, input.description, opts?.k, opts?.roundStep]);
 
   return {
     loading,

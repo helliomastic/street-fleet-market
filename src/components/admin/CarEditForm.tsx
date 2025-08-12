@@ -115,6 +115,7 @@ export const CarEditForm = ({
               year: editingCar.year,
               condition: editingCar.condition,
               fuelType: editingCar.fuel_type,
+              description: editingCar.description,
             }}
             onApply={(p) => setEditingCar({ ...editingCar, price: p })}
           />

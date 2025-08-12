@@ -445,6 +445,7 @@ const PostCarPage = () => {
                     year: form.watch("year"),
                     condition: form.watch("condition"),
                     fuelType: form.watch("fuelType"),
+                    description: form.watch("description"),
                   }}
                   onApply={(p) => {
                     form.setValue("price", String(p), { shouldValidate: true });
