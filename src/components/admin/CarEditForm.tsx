@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import PriceSuggestion from "@/components/price/PriceSuggestion";
 import { CarListing } from "./CarListing";
 
 interface CarEditFormProps {
@@ -107,6 +108,16 @@ export const CarEditForm = ({
               }
             />
           </div>
+          <PriceSuggestion
+            values={{
+              make: editingCar.make,
+              model: editingCar.model,
+              year: editingCar.year,
+              condition: editingCar.condition,
+              fuelType: editingCar.fuel_type,
+            }}
+            onApply={(p) => setEditingCar({ ...editingCar, price: p })}
+          />
           <div>
             <label
               htmlFor="price"

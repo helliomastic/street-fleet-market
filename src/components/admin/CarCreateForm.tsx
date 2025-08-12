@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import PriceSuggestion from "@/components/price/PriceSuggestion";
 
 interface CarCreateFormProps {
   creating: boolean;
@@ -136,6 +137,16 @@ export const CarCreateForm = ({
               }
             />
           </div>
+          <PriceSuggestion
+            values={{
+              make: newCar.make,
+              model: newCar.model,
+              year: newCar.year,
+              condition: newCar.condition,
+              fuelType: newCar.fuelType,
+            }}
+            onApply={(p) => setNewCar({ ...newCar, price: p })}
+          />
           <div>
             <label
               htmlFor="new-price"
