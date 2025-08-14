@@ -99,12 +99,12 @@ function cosineSim(aText?: string, bText?: string): number {
 // Weighted distance. Smaller is more similar.
 function distance(a: CarSample, b: CarSample, yearRange: { min: number; max: number } | null) {
   const weights = {
-    make: 1.0,
-    model: 1.5,
-    fuel: 0.5,
-    year: 1.0,
-    condition: 0.75,
-    description: 0.6,
+    make: 1.2,
+    model: 1.8,
+    fuel: 0.7,
+    year: 2.0, // Increased weight for year
+    condition: 1.0,
+    description: 0.8,
   };
 
   let d = 0;
@@ -138,7 +138,7 @@ function roundToNearest(value: number, step: number) {
   return Math.round(value / step) * step;
 }
 
-export function suggestPriceKNN(query: QueryInput, dataset: CarSample[], k = 5, roundStep = 1000): KnnResult {
+export function suggestPriceKNN(query: QueryInput, dataset: CarSample[], k = 5, roundStep = 50000): KnnResult {
   const qYear = toYear(query.year);
   const q: CarSample = {
     make: (query.make || "").trim(),
@@ -167,14 +167,22 @@ export function suggestPriceKNN(query: QueryInput, dataset: CarSample[], k = 5, 
 
   const neighbors = scored.slice(0, Math.max(1, Math.min(k, scored.length)));
 
-  // Inverse-distance weighted average
+  // Inverse-distance weighted average with year depreciation factor
   const eps = 1e-6;
   let wSum = 0;
   let px = 0;
+  const currentYear = new Date().getFullYear();
+  
   neighbors.forEach((n) => {
     const w = 1 / (eps + n.distance);
+    
+    // Apply year-based pricing adjustment (newer cars worth more)
+    const yearDiff = Math.max(0, currentYear - n.year);
+    const depreciationFactor = Math.pow(0.92, yearDiff); // 8% depreciation per year
+    const adjustedPrice = n.price * depreciationFactor;
+    
     wSum += w;
-    px += w * n.price;
+    px += w * adjustedPrice;
   });
 
   if (wSum === 0) {
@@ -182,11 +190,32 @@ export function suggestPriceKNN(query: QueryInput, dataset: CarSample[], k = 5, 
   }
 
   const raw = px / wSum;
-  const suggested = roundToNearest(raw, roundStep);
+  
+  // Apply query year adjustment to bring price to current market value
+  const queryYearDiff = Math.max(0, currentYear - (q.year || currentYear));
+  const queryDepreciationFactor = Math.pow(0.92, queryYearDiff);
+  const yearAdjustedPrice = raw / queryDepreciationFactor;
+  
+  // Dynamic rounding based on price range
+  let dynamicRoundStep = roundStep;
+  if (yearAdjustedPrice > 2000000) dynamicRoundStep = 100000;
+  else if (yearAdjustedPrice > 1000000) dynamicRoundStep = 50000;
+  else if (yearAdjustedPrice > 500000) dynamicRoundStep = 25000;
+  else dynamicRoundStep = 10000;
+  
+  const suggested = roundToNearest(yearAdjustedPrice, dynamicRoundStep);
 
-  // Confidence: lower average distance -> higher confidence
+  // Improved confidence calculation
   const avgDist = neighbors.reduce((s, n) => s + n.distance, 0) / neighbors.length;
-  const conf = Math.max(0, Math.min(1, 1 - avgDist / 3)); // heuristic scaling
+  const maxDist = Math.max(...neighbors.map(n => n.distance));
+  const minDist = neighbors[0]?.distance || 0;
+  
+  // Confidence based on distance spread and neighbor count
+  const distanceSpread = maxDist - minDist;
+  const neighborRatio = neighbors.length / Math.min(k, valid.length);
+  const baseConfidence = Math.max(0, 1 - (avgDist / 6)); // Adjusted scaling
+  const spreadPenalty = distanceSpread > 2 ? 0.8 : 1.0;
+  const conf = Math.min(1, baseConfidence * neighborRatio * spreadPenalty);
 
   return {
     suggestedPrice: suggested,

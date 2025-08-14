@@ -48,7 +48,7 @@ export function usePriceSuggestion(input: QueryInput, opts?: { k?: number; round
 
   const result: KnnResult = useMemo(() => {
     if (!data) return { suggestedPrice: null, neighbors: [], confidence: 0 };
-    return suggestPriceKNN(input, data, opts?.k ?? 5, opts?.roundStep ?? 1000);
+    return suggestPriceKNN(input, data, opts?.k ?? 7, opts?.roundStep ?? 50000);
   }, [data, input.make, input.model, input.year, input.condition, input.fuelType, input.description, opts?.k, opts?.roundStep]);
 
   return {
