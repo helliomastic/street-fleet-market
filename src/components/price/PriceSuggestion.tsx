@@ -27,9 +27,6 @@ export default function PriceSuggestion({ values, onApply }: Props) {
             <div className="flex items-center justify-between gap-3">
               <div>
                 Suggested: <span className="font-semibold">Rs {result.suggestedPrice?.toLocaleString()}</span>
-                {typeof result.confidence === "number" && (
-                  <span className="ml-2 text-muted-foreground">(confidence {(result.confidence * 100).toFixed(0)}%)</span>
-                )}
               </div>
               <Button size="sm" variant="secondary" onClick={() => onApply(result.suggestedPrice!)}>
                 Use suggestion
